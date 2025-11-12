@@ -33,7 +33,7 @@ const ITEMS = {
 // --- ROOM LAYOUT (pixels) ---
 const LAYOUT = {
     mirror: { x: 140, y: 120, w: 280, h: 380 },
-    curtain: { x: 40, y: 90, w: 150, h: 450 },
+    curtain: { x: 40, y: 90, w: 400, h: 450 },
     table: { x: 120, y: 510, w: 240, h: 160 },
     door: { x: (BASE_WIDTH - 220) / 2, y: 180, w: 220, h: 400 },
     bowl: { x: 880, y: 585, w: 100, h: 60 },
@@ -48,6 +48,13 @@ const HOLD = { mirror: 1200, door: 900 }; // ms
 let _holdStart = null;
 function startHold() { _holdStart = performance.now(); }
 function endHold() { const t = _holdStart ? performance.now() - _holdStart : 0; _holdStart = null; return t; }
+
+// Atmospheric text helper
+function showAtmosphericText(text, duration = 3.0) {
+    Game.gameState.atmosphericText = text;
+    Game.gameState.atmosphericTextTimer = 0;
+    Game.gameState.atmosphericTextDuration = duration;
+}
 
 // --- GLOBAL GAME OBJECT ---
 const Game = {
@@ -80,7 +87,10 @@ const Game = {
         bowlWarmed: false,
         doorLit: false,
         bloodDropped: false,
-        noteRead: false
+        noteRead: false,
+        atmosphericText: null,
+        atmosphericTextTimer: 0,
+        atmosphericTextDuration: 0
     },
 
     // Inventory system
@@ -624,7 +634,7 @@ const Assets = {
 
     generateCurtain(pulled = false) {
         const canvas = document.createElement('canvas');
-        canvas.width = pulled ? 80 : 150;
+        canvas.width = pulled ? 100 : 400;
         canvas.height = 450;
         const ctx = canvas.getContext('2d');
 
@@ -632,14 +642,14 @@ const Assets = {
 
         if (pulled) {
             // Pulled to side
-            ctx.fillRect(0, 0, 80, 450);
-            for (let i = 0; i < 5; i++) {
+            ctx.fillRect(0, 0, 100, 450);
+            for (let i = 0; i < 7; i++) {
                 ctx.fillStyle = i % 2 === 0 ? '#2d1f15' : '#1d0f05';
-                ctx.fillRect(i * 16, 0, 16, 450);
+                ctx.fillRect(i * 14, 0, 14, 450);
             }
         } else {
-            // Hanging with folds
-            for (let i = 0; i < 10; i++) {
+            // Hanging with folds - wider to completely cover mirror
+            for (let i = 0; i < 27; i++) {
                 ctx.fillStyle = i % 2 === 0 ? '#2d1f15' : '#1d0f05';
                 ctx.fillRect(i * 15, 0, 15, 450);
             }
@@ -995,6 +1005,15 @@ const SceneRoom = {
         if (clockDisplay) {
             clockDisplay.textContent = Game.gameState.clockTime;
         }
+
+        // Show atmospheric text based on loop count
+        if (Game.gameState.loopCount === 0) {
+            setTimeout(() => showAtmosphericText('The same room. Always the same room.', 4.0), 500);
+        } else if (Game.gameState.loopCount === 1) {
+            setTimeout(() => showAtmosphericText('Again? Or still?', 3.5), 500);
+        } else if (Game.gameState.loopCount >= 2) {
+            setTimeout(() => showAtmosphericText('How many times have you been here?', 3.5), 500);
+        }
     },
 
     exit() {
@@ -1014,7 +1033,7 @@ const SceneRoom = {
         // Curtain first — reveals mirror + shard
         if (!Game.gameState.curtainPulled) {
             Hotspots.add('curtain', LAYOUT.curtain.x, LAYOUT.curtain.y, LAYOUT.curtain.w, LAYOUT.curtain.h,
-                'Pull', () => this.handleCurtain());
+                'Pull curtain', () => this.handleCurtain());
         }
 
         // Drawer (toggle open/close, items live inside)
@@ -1045,6 +1064,7 @@ const SceneRoom = {
             Game.assets.mirror = Assets.generateMirror(false);
             AudioEngine.playWhoosh();
             Inventory.deselect();
+            showAtmosphericText('The reflection becomes whole. You see yourself clearly now.', 3.5);
             setTimeout(() => this.setupHotspots(), 500);
         } else if (Game.gameState.mirrorRepaired) {
             // Short tap = "close eyes" ending
@@ -1061,6 +1081,9 @@ const SceneRoom = {
             Inventory.add(ITEMS.MIRROR_SHARD);
             Game.gameState.bloodDropped = true; // tiny cut as you pull shard
             Inventory.render();
+            showAtmosphericText('A shard falls. A drop of blood follows.', 2.5);
+        } else {
+            showAtmosphericText('The mirror stares back, cracked and waiting.', 2.5);
         }
 
         this.setupHotspots();
@@ -1071,7 +1094,10 @@ const SceneRoom = {
         AudioEngine.playTick();
 
         if (Game.gameState.drawerOpen) {
-            if (!Inventory.has(ITEMS.MATCHBOX)) Inventory.add(ITEMS.MATCHBOX);
+            if (!Inventory.has(ITEMS.MATCHBOX)) {
+                Inventory.add(ITEMS.MATCHBOX);
+                showAtmosphericText('Matches and a note. Left for you? Or by you?', 3.0);
+            }
             if (!Inventory.has(ITEMS.NOTE)) Inventory.add(ITEMS.NOTE);
         }
 
@@ -1088,6 +1114,7 @@ const SceneRoom = {
             Inventory.remove(ITEMS.MATCHBOX);
             Inventory.add(ITEMS.LIT_MATCH);
             Inventory.deselect();
+            showAtmosphericText('Warmth flickers. The cat stirs.', 2.5);
         }
     },
 
@@ -1113,6 +1140,7 @@ const SceneRoom = {
             Game.assets.door = Assets.generateDoor(0.7);
             AudioEngine.playTick();
             Inventory.deselect();
+            showAtmosphericText('Light seeps through. The door calls to you.', 3.0);
             setTimeout(() => this.setupHotspots(), 500);
         } else if (Game.gameState.doorLit) {
             // Quick open = false awakening
@@ -1124,6 +1152,14 @@ const SceneRoom = {
     update(dt) {
         this.doorLightPulse += dt;
         Hotspots.update(Game.mouse.worldX, Game.mouse.worldY);
+
+        // Update atmospheric text timer
+        if (Game.gameState.atmosphericText) {
+            Game.gameState.atmosphericTextTimer += dt;
+            if (Game.gameState.atmosphericTextTimer >= Game.gameState.atmosphericTextDuration) {
+                Game.gameState.atmosphericText = null;
+            }
+        }
     },
 
     draw(ctx) {
@@ -1178,9 +1214,45 @@ const SceneRoom = {
         ctx.fillStyle = `rgba(255, 245, 220, ${0.05 + 0.04 * Math.sin(t * 2)})`;
         ctx.fillRect(LAYOUT.door.x + 100, LAYOUT.door.y + 50, 20, 300);
 
+        // Floating dust particles for atmosphere
+        ctx.save();
+        for (let i = 0; i < 15; i++) {
+            const x = ((i * 123 + t * 20) % BASE_WIDTH);
+            const y = ((i * 456 + t * 15) % BASE_HEIGHT);
+            const size = 1 + (i % 3);
+            const alpha = 0.05 + 0.03 * Math.sin(t + i);
+            ctx.fillStyle = `rgba(212, 197, 169, ${alpha})`;
+            ctx.fillRect(x, y, size, size);
+        }
+        ctx.restore();
+
         // Effects
         FX.drawVignette(ctx);
         FX.drawGrain(ctx);
+
+        // Atmospheric text overlay
+        if (Game.gameState.atmosphericText) {
+            const fadeIn = 0.6;
+            const fadeOut = 0.8;
+            const timer = Game.gameState.atmosphericTextTimer;
+            const duration = Game.gameState.atmosphericTextDuration;
+
+            let alpha = 1;
+            if (timer < fadeIn) {
+                alpha = timer / fadeIn;
+            } else if (timer > duration - fadeOut) {
+                alpha = (duration - timer) / fadeOut;
+            }
+
+            ctx.save();
+            ctx.fillStyle = `rgba(212, 197, 169, ${alpha * 0.9})`;
+            ctx.font = 'italic 16px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+            ctx.shadowBlur = 4;
+            ctx.fillText(Game.gameState.atmosphericText, BASE_WIDTH / 2, BASE_HEIGHT - 80);
+            ctx.restore();
+        }
     }
 };
 
@@ -1242,7 +1314,10 @@ const SceneEndingMirrorA = {
         this.endingOverlay = document.createElement('div');
         this.endingOverlay.className = 'ending-overlay';
         this.endingOverlay.innerHTML = `
-            <div class="ending-caption">You never really woke up.</div>
+            <div class="ending-caption">
+                You step through the mirror into another version of yourself.<br><br>
+                Still dreaming. Still here.
+            </div>
             <button class="try-again-btn" id="ending-return">Continue</button>
         `;
         document.getElementById('game-container').appendChild(this.endingOverlay);
@@ -1262,7 +1337,33 @@ const SceneEndingMirrorA = {
         Game.gameState.clockTime = `${hours}:${newMinutes.toString().padStart(2, '0')}`;
         Game.assets.clock = Assets.generateClock(Game.gameState.clockTime);
 
+        // Reset room state for new loop
+        this.resetRoomState();
+
         this.checkFinalEnding();
+    },
+
+    resetRoomState() {
+        // Reset room interactions but keep progression
+        Game.gameState.mirrorCracked = true;
+        Game.gameState.mirrorRepaired = false;
+        Game.gameState.curtainPulled = false;
+        Game.gameState.drawerOpen = false;
+        Game.gameState.catAwake = false;
+        Game.gameState.catFed = false;
+        Game.gameState.bowlWarmed = false;
+        Game.gameState.doorLit = false;
+        Game.gameState.bloodDropped = false;
+        Game.gameState.atmosphericText = null;
+        Game.gameState.atmosphericTextTimer = 0;
+
+        // Clear inventory
+        Game.inventory.items = [];
+        Game.inventory.selectedItem = null;
+        Inventory.render();
+
+        // Regenerate assets to reset states
+        Assets.load();
     },
 
     checkFinalEnding() {
@@ -1310,7 +1411,10 @@ const SceneEndingMirrorB = {
         this.endingOverlay = document.createElement('div');
         this.endingOverlay.className = 'ending-overlay';
         this.endingOverlay.innerHTML = `
-            <div class="ending-caption">Awake, but time stayed.</div>
+            <div class="ending-caption">
+                You close your eyes and surrender.<br><br>
+                When you open them, the clock hasn't moved.
+            </div>
             <button class="try-again-btn" id="ending-return">Continue</button>
         `;
         document.getElementById('game-container').appendChild(this.endingOverlay);
@@ -1394,7 +1498,10 @@ const SceneEndingCatA = {
         this.endingOverlay = document.createElement('div');
         this.endingOverlay.className = 'ending-overlay';
         this.endingOverlay.innerHTML = `
-            <div class="ending-caption">Reset or relief?</div>
+            <div class="ending-caption">
+                Three eyes. Three scratches.<br><br>
+                The pain wakes you, but into what?
+            </div>
             <button class="try-again-btn" id="ending-return">Continue</button>
         `;
         document.getElementById('game-container').appendChild(this.endingOverlay);
@@ -1451,7 +1558,10 @@ const SceneEndingCatB = {
         this.endingOverlay = document.createElement('div');
         this.endingOverlay.className = 'ending-overlay';
         this.endingOverlay.innerHTML = `
-            <div class="ending-caption">Fear made room for you.</div>
+            <div class="ending-caption">
+                The warmth soothes what hunts you.<br><br>
+                For a moment, you feel less alone in the dream.
+            </div>
             <button class="try-again-btn" id="ending-return">Continue</button>
         `;
         document.getElementById('game-container').appendChild(this.endingOverlay);
@@ -1525,7 +1635,11 @@ const SceneEndingDoorA = {
         this.endingOverlay = document.createElement('div');
         this.endingOverlay.className = 'ending-overlay';
         this.endingOverlay.innerHTML = `
-            <div class="ending-caption">…But are you really awake?</div>
+            <div class="ending-caption">
+                Light floods through the open door.<br><br>
+                You step forward into brightness, into awakening—<br>
+                But the clock still reads 3:33.
+            </div>
             <button class="try-again-btn" id="ending-return">Continue</button>
         `;
         document.getElementById('game-container').appendChild(this.endingOverlay);
@@ -1610,7 +1724,11 @@ const SceneEndingDoorB = {
         this.endingOverlay = document.createElement('div');
         this.endingOverlay.className = 'ending-overlay';
         this.endingOverlay.innerHTML = `
-            <div class="ending-caption">Freedom, if you don't look closely.</div>
+            <div class="ending-caption">
+                You wait with the light, patient.<br><br>
+                It waits with you.<br><br>
+                When you finally step through, you're already somewhere else.
+            </div>
             <button class="try-again-btn" id="ending-return">Continue</button>
         `;
         document.getElementById('game-container').appendChild(this.endingOverlay);
@@ -1666,11 +1784,15 @@ const SceneFinalEnding = {
         this.endingOverlay = document.createElement('div');
         this.endingOverlay.className = 'ending-overlay';
         this.endingOverlay.innerHTML = `
-            <div class="ending-caption" style="font-size: 22px;">
-                The room sleeps.<br><br>
-                You are the dream now.
+            <div class="ending-caption" style="font-size: 20px; line-height: 2;">
+                You've tried every path.<br>
+                Mirror, cat, door.<br><br>
+                Every escape leads back here.<br>
+                Every awakening is another sleep.<br><br>
+                The room doesn't need to trap you anymore.<br><br>
+                <span style="font-size: 22px;">You are the dream now.</span>
             </div>
-            <button class="try-again-btn" id="ending-restart">Restart</button>
+            <button class="try-again-btn" id="ending-restart">Dream Again</button>
         `;
         document.getElementById('game-container').appendChild(this.endingOverlay);
 
