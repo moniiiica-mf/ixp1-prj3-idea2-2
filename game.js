@@ -393,18 +393,18 @@ const FX = {
             this.generateGrain();
             this.grainRefreshCounter = 0;
         }
-        ctx.globalAlpha = 0.35;
+        ctx.globalAlpha = 0.2;
         ctx.drawImage(this.grainCanvas, 0, 0);
         ctx.globalAlpha = 1;
     },
 
     drawVignette(ctx) {
         const gradient = ctx.createRadialGradient(
-            BASE_WIDTH / 2, BASE_HEIGHT / 2, BASE_HEIGHT * 0.2,
-            BASE_WIDTH / 2, BASE_HEIGHT / 2, BASE_HEIGHT * 0.7
+            BASE_WIDTH / 2, BASE_HEIGHT / 2, BASE_HEIGHT * 0.3,
+            BASE_WIDTH / 2, BASE_HEIGHT / 2, BASE_HEIGHT * 0.8
         );
         gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
     },
@@ -1209,16 +1209,16 @@ const SceneRoom = {
     },
 
     draw(ctx) {
-        // Background
+        // Background (brighter)
         const bgGradient = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
-        bgGradient.addColorStop(0, '#1a1410');
-        bgGradient.addColorStop(0.65, '#0f0a08');
-        bgGradient.addColorStop(1, '#05030 2');
+        bgGradient.addColorStop(0, '#4a3d32');
+        bgGradient.addColorStop(0.65, '#3a2d22');
+        bgGradient.addColorStop(1, '#2a1d12');
         ctx.fillStyle = bgGradient;
         ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
 
-        // Floor
-        ctx.fillStyle = '#0a0705';
+        // Floor (brighter)
+        ctx.fillStyle = '#2d2318';
         ctx.fillRect(0, BASE_HEIGHT * 0.7, BASE_WIDTH, BASE_HEIGHT * 0.3);
 
         // Wall texture (cracks)
@@ -1260,7 +1260,7 @@ const SceneRoom = {
 
         // Character (player silhouette in lower left)
         ctx.save();
-        ctx.globalAlpha = 0.6;
+        ctx.globalAlpha = 0.8;
         ctx.drawImage(Game.assets.character, 180, 520);
         ctx.restore();
 

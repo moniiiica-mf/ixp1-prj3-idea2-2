@@ -34,9 +34,9 @@ body {
     max-height: 100%;
     image-rendering: crisp-edges;
     cursor: default;
-    filter: sepia(0.3) contrast(1.1);
+    filter: sepia(0.2) contrast(1.05) brightness(1.1);
     border: 3px solid #3d3226;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 0, 0, 0.2);
 }
 
 #game-canvas.hover-hotspot {
