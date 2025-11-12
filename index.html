@@ -13,7 +13,22 @@
             <button id="sound-toggle" aria-label="Toggle sound">🔊</button>
         </div>
         <canvas id="game-canvas"></canvas>
-        <div id="instruction-hint">Click objects to choose.</div>
+
+        <!-- Inventory System -->
+        <div id="inventory">
+            <div class="inventory-slot" data-slot="0"></div>
+            <div class="inventory-slot" data-slot="1"></div>
+            <div class="inventory-slot" data-slot="2"></div>
+            <div class="inventory-slot" data-slot="3"></div>
+        </div>
+
+        <!-- Close-up Overlay for Object Inspection -->
+        <div id="closeup-overlay" class="hidden">
+            <canvas id="closeup-canvas"></canvas>
+            <button id="closeup-back" class="back-btn">← Back</button>
+        </div>
+
+        <div id="instruction-hint">Explore the room. Click objects to interact.</div>
     </div>
     <script src="game.js"></script>
 </body>
