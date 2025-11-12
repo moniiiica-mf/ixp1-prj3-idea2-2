@@ -30,6 +30,25 @@ const ITEMS = {
     LIT_MATCH: 'lit_match'
 };
 
+// --- ROOM LAYOUT (pixels) ---
+const LAYOUT = {
+    mirror: { x: 140, y: 120, w: 280, h: 380 },
+    curtain: { x: 40, y: 90, w: 150, h: 450 },
+    table: { x: 120, y: 510, w: 240, h: 160 },
+    door: { x: (BASE_WIDTH - 220) / 2, y: 180, w: 220, h: 400 },
+    bowl: { x: 880, y: 585, w: 100, h: 60 },
+    cat: { x: 980, y: 465, w: 180, h: 120 },
+    clock: { x: (BASE_WIDTH / 2) - 60, y: 60, w: 120, h: 120 }
+};
+
+// Long-press thresholds (feel-first, no text)
+const HOLD = { mirror: 1200, door: 900 }; // ms
+
+// Long-press tracking
+let _holdStart = null;
+function startHold() { _holdStart = performance.now(); }
+function endHold() { const t = _holdStart ? performance.now() - _holdStart : 0; _holdStart = null; return t; }
+
 // --- GLOBAL GAME OBJECT ---
 const Game = {
     canvas: null,
@@ -55,7 +74,7 @@ const Game = {
         mirrorCracked: true,
         mirrorRepaired: false,
         curtainPulled: false,
-        drawerOpened: false,
+        drawerOpen: false,
         catAwake: false,
         catFed: false,
         bowlWarmed: false,
@@ -629,32 +648,48 @@ const Assets = {
         return canvas;
     },
 
-    generateTable() {
+    generateTable(open = false) {
         const canvas = document.createElement('canvas');
-        canvas.width = 200;
-        canvas.height = 150;
+        canvas.width = 240;
+        canvas.height = 160;
         const ctx = canvas.getContext('2d');
 
-        // Table top
+        // Top + apron
         ctx.fillStyle = '#3d2817';
-        ctx.fillRect(0, 0, 200, 30);
-        ctx.strokeStyle = '#2a1810';
-        ctx.strokeRect(0, 0, 200, 30);
+        ctx.fillRect(0, 0, 240, 28);
+        ctx.fillStyle = '#2f2014';
+        ctx.fillRect(0, 28, 240, 22);
+
+        // Legs (grounding)
+        ctx.fillStyle = '#3d2817';
+        ctx.fillRect(20, 50, 14, 110);
+        ctx.fillRect(206, 50, 14, 110);
 
         // Drawer
-        ctx.fillStyle = '#2d1f15';
-        ctx.fillRect(40, 40, 120, 50);
-        ctx.strokeStyle = '#1a1008';
-        ctx.strokeRect(40, 40, 120, 50);
+        if (!open) {
+            ctx.fillStyle = '#2b1c12';
+            ctx.fillRect(60, 35, 120, 36);
+            ctx.strokeStyle = '#1a1008';
+            ctx.strokeRect(60, 35, 120, 36);
+            ctx.fillStyle = '#6b533e';
+            ctx.beginPath();
+            ctx.arc(120, 53, 5, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Open: show cavity and items hint
+            ctx.fillStyle = '#1b130d';
+            ctx.fillRect(60, 35, 120, 60);
+            ctx.strokeStyle = '#1a1008';
+            ctx.strokeRect(60, 35, 120, 60);
+            ctx.fillStyle = '#8b4513';
+            ctx.fillRect(62, 85, 116, 10); // drawer front dropped
+        }
 
-        // Drawer handle
-        ctx.fillStyle = '#4a3428';
-        ctx.fillRect(90, 60, 20, 8);
-
-        // Table legs
-        ctx.fillStyle = '#3d2817';
-        ctx.fillRect(20, 100, 15, 50);
-        ctx.fillRect(165, 100, 15, 50);
+        // Ground shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.beginPath();
+        ctx.ellipse(120, 155, 110, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
 
         return canvas;
     },
@@ -689,56 +724,79 @@ const Assets = {
 
     generateCat(awake = false) {
         const canvas = document.createElement('canvas');
-        canvas.width = 140;
-        canvas.height = 90;
+        canvas.width = 180;
+        canvas.height = 120;
         const ctx = canvas.getContext('2d');
 
-        // Cat body (curled)
-        ctx.fillStyle = '#000';
+        // Realistic side-profile cat
+        ctx.fillStyle = '#0b0b0b';
+
+        // Body
         ctx.beginPath();
-        ctx.ellipse(70, 55, 50, 30, 0, 0, Math.PI * 2);
+        ctx.ellipse(90, 78, 70, 40, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Back leg
+        ctx.beginPath();
+        ctx.ellipse(55, 105, 22, 14, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Chest/neck
+        ctx.beginPath();
+        ctx.ellipse(128, 78, 30, 28, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // Head
         ctx.beginPath();
-        ctx.arc(95, 40, 22, 0, Math.PI * 2);
+        ctx.ellipse(150, 60, 24, 22, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Ears
+        // Ear 1
         ctx.beginPath();
-        ctx.moveTo(80, 25);
-        ctx.lineTo(85, 10);
-        ctx.lineTo(90, 28);
+        ctx.moveTo(160, 39);
+        ctx.lineTo(170, 55);
+        ctx.lineTo(152, 50);
+        ctx.closePath();
         ctx.fill();
 
+        // Ear 2
         ctx.beginPath();
-        ctx.moveTo(100, 25);
-        ctx.lineTo(105, 10);
-        ctx.lineTo(110, 28);
+        ctx.moveTo(142, 40);
+        ctx.lineTo(150, 52);
+        ctx.lineTo(136, 50);
+        ctx.closePath();
         ctx.fill();
-
-        // Eyes
-        if (awake) {
-            ctx.fillStyle = '#64ff80';
-            // Three eyes
-            ctx.beginPath();
-            ctx.arc(88, 38, 3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(96, 35, 3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(104, 38, 3, 0, Math.PI * 2);
-            ctx.fill();
-        }
 
         // Tail
-        ctx.fillStyle = '#000';
+        ctx.lineWidth = 10;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#0b0b0b';
         ctx.beginPath();
-        ctx.moveTo(30, 50);
-        ctx.quadraticCurveTo(20, 30, 35, 25);
-        ctx.lineWidth = 8;
+        ctx.moveTo(30, 85);
+        ctx.quadraticCurveTo(10, 60, 32, 45);
         ctx.stroke();
+
+        // Eyes (sleeping = narrow slits, awake = 3 glowing)
+        if (!awake) {
+            ctx.strokeStyle = '#272727';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(142, 60);
+            ctx.lineTo(148, 60);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(155, 60);
+            ctx.lineTo(161, 60);
+            ctx.stroke();
+        } else {
+            ctx.fillStyle = '#64ff80';
+            // Three glowing eyes
+            [[145, 57], [155, 57], [150, 52]].forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p[0], p[1], 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
 
         return canvas;
     },
@@ -781,6 +839,10 @@ const Assets = {
             ctx.fillStyle = `rgba(255, 240, 200, ${lightIntensity * 0.8})`;
             ctx.fillRect(107, 50, 6, 300);
         }
+
+        // Constant hairline crack (door slightly open)
+        ctx.fillStyle = 'rgba(255, 240, 200, 0.35)';
+        ctx.fillRect(108, 55, 4, 290);
 
         return canvas;
     },
@@ -846,7 +908,9 @@ const Assets = {
         Game.assets.mirror = this.generateMirror(Game.gameState.mirrorCracked);
         Game.assets.curtainClosed = this.generateCurtain(false);
         Game.assets.curtainOpen = this.generateCurtain(true);
-        Game.assets.table = this.generateTable();
+        Game.assets.tableClosed = this.generateTable(false);
+        Game.assets.tableOpen = this.generateTable(true);
+        Game.assets.table = Game.assets.tableClosed;
         Game.assets.bowl = this.generateBowl(false);
         Game.assets.bowlWarmed = this.generateBowl(true);
         Game.assets.catSleeping = this.generateCat(false);
@@ -940,180 +1004,87 @@ const SceneRoom = {
     setupHotspots() {
         Hotspots.clear();
 
-        // Mirror
-        Hotspots.add('mirror', 60, 120, 280, 380,
-            Game.gameState.mirrorRepaired ? 'Touch mirror' : 'Look at mirror',
+        // Mirror (press & hold to "press palm")
+        Hotspots.add('mirror', LAYOUT.mirror.x, LAYOUT.mirror.y, LAYOUT.mirror.w, LAYOUT.mirror.h,
+            Game.gameState.mirrorRepaired ? 'Touch' : (Game.gameState.curtainPulled ? 'Inspect' : '(Covered)'),
             () => this.handleMirror(),
             true
         );
 
-        // Curtain
+        // Curtain first — reveals mirror + shard
         if (!Game.gameState.curtainPulled) {
-            Hotspots.add('curtain', 10, 100, 150, 450, 'Pull curtain', () => this.handleCurtain());
+            Hotspots.add('curtain', LAYOUT.curtain.x, LAYOUT.curtain.y, LAYOUT.curtain.w, LAYOUT.curtain.h,
+                'Pull', () => this.handleCurtain());
         }
 
-        // Table drawer
-        Hotspots.add('drawer', 400, 540, 200, 100,
-            Game.gameState.drawerOpened ? 'Open drawer' : 'Open drawer',
+        // Drawer (toggle open/close, items live inside)
+        Hotspots.add('drawer', LAYOUT.table.x + 60, LAYOUT.table.y + 35, 120, Game.gameState.drawerOpen ? 60 : 36,
+            Game.gameState.drawerOpen ? 'Close drawer' : 'Open drawer',
             () => this.handleDrawer()
         );
 
         // Bowl
-        Hotspots.add('bowl', 850, 580, 100, 60, 'Examine bowl', () => this.handleBowl(), true);
+        Hotspots.add('bowl', LAYOUT.bowl.x, LAYOUT.bowl.y, LAYOUT.bowl.w, LAYOUT.bowl.h,
+            'Bowl', () => this.handleBowl(), true);
 
-        // Cat
-        Hotspots.add('cat', 980, 500, 140, 90,
-            Game.gameState.catAwake ? 'Call cat' : 'Watch cat',
-            () => this.handleCat(),
-            true
-        );
+        // Cat (visible from start; lunge vs soothe)
+        Hotspots.add('cat', LAYOUT.cat.x, LAYOUT.cat.y, LAYOUT.cat.w, LAYOUT.cat.h,
+            Game.gameState.catAwake ? 'Call' : 'Pet', () => this.handleCat(), true);
 
-        // Door
-        Hotspots.add('door', 1030, 180, 220, 400, 'Approach door', () => this.handleDoor(), true);
+        // Door (center)
+        Hotspots.add('door', LAYOUT.door.x, LAYOUT.door.y, LAYOUT.door.w, LAYOUT.door.h,
+            'Door', () => this.handleDoor(), true);
     },
 
     handleMirror() {
+        if (!Game.gameState.curtainPulled) return; // covered
+
         if (Game.inventory.selectedItem === ITEMS.MIRROR_SHARD && !Game.gameState.mirrorRepaired) {
             // Repair mirror with shard
             Game.gameState.mirrorRepaired = true;
             Game.assets.mirror = Assets.generateMirror(false);
             AudioEngine.playWhoosh();
             Inventory.deselect();
-
-            // Check if can step through
-            setTimeout(() => {
-                this.setupHotspots();
-            }, 500);
+            setTimeout(() => this.setupHotspots(), 500);
         } else if (Game.gameState.mirrorRepaired) {
-            // Can step through or close eyes
-            this.showMirrorChoice();
-        }
-    },
-
-    showMirrorChoice() {
-        // Show choice overlay
-        const overlay = document.createElement('div');
-        overlay.className = 'ending-overlay';
-        overlay.innerHTML = `
-            <div class="ending-caption">The mirror ripples like water. You can see another version of the room beyond it.</div>
-            <button class="try-again-btn" id="mirror-through">Step through</button>
-            <button class="try-again-btn" id="mirror-stay" style="margin-left: 20px;">Close your eyes</button>
-        `;
-        document.getElementById('game-container').appendChild(overlay);
-
-        document.getElementById('mirror-through').onclick = () => {
-            overlay.remove();
-            Game.gameState.completedEndings.add('mirror_a');
-            SceneManager.changeState(STATES.ENDING_MIRROR_A);
-        };
-
-        document.getElementById('mirror-stay').onclick = () => {
-            overlay.remove();
+            // Short tap = "close eyes" ending
             Game.gameState.completedEndings.add('mirror_b');
             SceneManager.changeState(STATES.ENDING_MIRROR_B);
-        };
+        }
     },
 
     handleCurtain() {
         Game.gameState.curtainPulled = true;
         AudioEngine.playWhoosh();
 
-        // Find shard
         if (!Inventory.has(ITEMS.MIRROR_SHARD)) {
             Inventory.add(ITEMS.MIRROR_SHARD);
-
-            // Show message
-            const msg = document.createElement('div');
-            msg.className = 'caption-text';
-            msg.textContent = 'A sharp mirror shard. It cuts your hand.';
-            msg.style.opacity = '0';
-            document.getElementById('game-container').appendChild(msg);
-
-            setTimeout(() => {
-                msg.style.transition = 'opacity 0.5s';
-                msg.style.opacity = '1';
-                setTimeout(() => {
-                    msg.style.opacity = '0';
-                    setTimeout(() => msg.remove(), 500);
-                }, 2000);
-            }, 100);
+            Game.gameState.bloodDropped = true; // tiny cut as you pull shard
+            Inventory.render();
         }
 
         this.setupHotspots();
     },
 
     handleDrawer() {
-        if (!Game.gameState.drawerOpened) {
-            Game.gameState.drawerOpened = true;
-            AudioEngine.playWhoosh();
+        Game.gameState.drawerOpen = !Game.gameState.drawerOpen;
+        AudioEngine.playTick();
 
-            // Add matchbox and note
-            if (!Inventory.has(ITEMS.MATCHBOX)) {
-                Inventory.add(ITEMS.MATCHBOX);
-            }
-            if (!Inventory.has(ITEMS.NOTE)) {
-                Inventory.add(ITEMS.NOTE);
-            }
-        } else if (Game.inventory.selectedItem === ITEMS.NOTE) {
-            // Read note
-            this.showNote();
+        if (Game.gameState.drawerOpen) {
+            if (!Inventory.has(ITEMS.MATCHBOX)) Inventory.add(ITEMS.MATCHBOX);
+            if (!Inventory.has(ITEMS.NOTE)) Inventory.add(ITEMS.NOTE);
         }
-    },
 
-    showNote() {
-        const overlay = document.createElement('div');
-        overlay.className = 'ending-overlay';
-        overlay.innerHTML = `
-            <div class="ending-caption" style="font-size: 14px; line-height: 2;">
-                <div style="background: #e8dcc0; color: #2a1810; padding: 40px; border: 2px solid #8c7a5e; max-width: 400px;">
-                    Some hungers can only be calmed by warmth.<br><br>
-                    Keys are made of light.<br>
-                    But doors don't always open outward.
-                </div>
-            </div>
-            <button class="try-again-btn" id="close-note">Close</button>
-        `;
-        document.getElementById('game-container').appendChild(overlay);
-
-        document.getElementById('close-note').onclick = () => {
-            overlay.remove();
-        };
-
-        Game.gameState.noteRead = true;
+        this.setupHotspots();
     },
 
     handleBowl() {
-        const selectedItem = Game.inventory.selectedItem;
+        const it = Game.inventory.selectedItem;
 
-        if (selectedItem === ITEMS.MIRROR_SHARD && !Game.gameState.bloodDropped) {
-            // Drop blood in bowl
-            Game.gameState.bloodDropped = true;
-            AudioEngine.playWhoosh();
-            Inventory.render(); // Update shard appearance
-
-            const msg = document.createElement('div');
-            msg.className = 'caption-text';
-            msg.textContent = 'A single drop of blood falls into the bowl.';
-            msg.style.opacity = '0';
-            document.getElementById('game-container').appendChild(msg);
-
-            setTimeout(() => {
-                msg.style.transition = 'opacity 0.5s';
-                msg.style.opacity = '1';
-                setTimeout(() => {
-                    msg.style.opacity = '0';
-                    setTimeout(() => msg.remove(), 500);
-                }, 2000);
-            }, 100);
-
-            Inventory.deselect();
-        } else if (selectedItem === ITEMS.MATCHBOX && !Game.gameState.bowlWarmed) {
-            // Strike match near bowl
+        if (it === ITEMS.MATCHBOX && !Game.gameState.bowlWarmed) {
             Game.gameState.bowlWarmed = true;
             Game.assets.bowl = Assets.generateBowl(true);
             AudioEngine.playMatchStrike();
-
-            // Convert to lit match
             Inventory.remove(ITEMS.MATCHBOX);
             Inventory.add(ITEMS.LIT_MATCH);
             Inventory.deselect();
@@ -1121,86 +1092,33 @@ const SceneRoom = {
     },
 
     handleCat() {
-        if (!Game.gameState.catAwake && Game.gameState.bowlWarmed) {
-            // Wake cat
+        if (Game.gameState.bowlWarmed) {
             Game.gameState.catAwake = true;
-            AudioEngine.playMeow();
-            this.setupHotspots();
-        } else if (Game.gameState.catAwake) {
-            // Cat interaction
-            this.showCatChoice();
         }
-    },
 
-    showCatChoice() {
-        const overlay = document.createElement('div');
-        overlay.className = 'ending-overlay';
-        overlay.innerHTML = `
-            <div class="ending-caption">The cat's three eyes fix on you. It begins to move.</div>
-            <button class="try-again-btn" id="cat-call">Call it closer</button>
-            <button class="try-again-btn" id="cat-warmth" style="margin-left: 20px;">Light another match</button>
-        `;
-        document.getElementById('game-container').appendChild(overlay);
-
-        document.getElementById('cat-call').onclick = () => {
-            overlay.remove();
-            Game.gameState.completedEndings.add('cat_a');
-            SceneManager.changeState(STATES.ENDING_CAT_A);
-        };
-
-        document.getElementById('cat-warmth').onclick = () => {
-            overlay.remove();
+        if (Game.inventory.selectedItem === ITEMS.LIT_MATCH) {
+            // Soothe → warm ending
             Game.gameState.completedEndings.add('cat_b');
             SceneManager.changeState(STATES.ENDING_CAT_B);
-        };
+        } else {
+            // Lunge (scare) ending
+            Game.gameState.completedEndings.add('cat_a');
+            SceneManager.changeState(STATES.ENDING_CAT_A);
+        }
     },
 
     handleDoor() {
-        const selectedItem = Game.inventory.selectedItem;
-
-        if (selectedItem === ITEMS.LIT_MATCH && !Game.gameState.doorLit) {
-            // Light the door seam
+        if (Game.inventory.selectedItem === ITEMS.LIT_MATCH && !Game.gameState.doorLit) {
             Game.gameState.doorLit = true;
-            AudioEngine.playTick();
             Game.assets.door = Assets.generateDoor(0.7);
+            AudioEngine.playTick();
             Inventory.deselect();
-
-            setTimeout(() => {
-                this.setupHotspots();
-            }, 500);
+            setTimeout(() => this.setupHotspots(), 500);
         } else if (Game.gameState.doorLit) {
-            // Can open door
-            this.showDoorChoice();
-        }
-    },
-
-    showDoorChoice() {
-        AudioEngine.playTick();
-
-        const overlay = document.createElement('div');
-        overlay.className = 'ending-overlay';
-        overlay.innerHTML = `
-            <div class="ending-caption">The door handle feels warm. Light seeps through the growing crack.</div>
-            <button class="try-again-btn" id="door-open">Open now</button>
-            <button class="try-again-btn" id="door-wait" style="margin-left: 20px;">Wait for the tick</button>
-        `;
-        document.getElementById('game-container').appendChild(overlay);
-
-        document.getElementById('door-open').onclick = () => {
-            overlay.remove();
+            // Quick open = false awakening
             Game.gameState.completedEndings.add('door_a');
             SceneManager.changeState(STATES.ENDING_DOOR_A);
-        };
-
-        document.getElementById('door-wait').onclick = () => {
-            overlay.remove();
-            // Wait for tick
-            setTimeout(() => {
-                AudioEngine.playTick();
-                Game.gameState.completedEndings.add('door_b');
-                SceneManager.changeState(STATES.ENDING_DOOR_B);
-            }, 1000);
-        };
+        }
     },
 
     update(dt) {
@@ -1209,7 +1127,7 @@ const SceneRoom = {
     },
 
     draw(ctx) {
-        // Background (brighter)
+        // WALL
         const bgGradient = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
         bgGradient.addColorStop(0, '#4a3d32');
         bgGradient.addColorStop(0.65, '#3a2d22');
@@ -1217,52 +1135,48 @@ const SceneRoom = {
         ctx.fillStyle = bgGradient;
         ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
 
-        // Floor (brighter)
+        // FLOOR boards
         ctx.fillStyle = '#2d2318';
         ctx.fillRect(0, BASE_HEIGHT * 0.7, BASE_WIDTH, BASE_HEIGHT * 0.3);
-
-        // Wall texture (cracks)
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 15; i++) {
-            const x = Math.sin(i * 123.45) * 400 + 640;
-            const y = Math.sin(i * 234.56) * 200 + 300;
-            const length = 30 + Math.sin(i * 345.67) * 50;
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x + Math.sin(i) * 15, y + length);
-            ctx.stroke();
+        for (let i = 0; i < 20; i++) {
+            ctx.fillStyle = i % 2 ? '#2a2016' : '#30261b';
+            ctx.fillRect(i * 64, BASE_HEIGHT * 0.7, 64, BASE_HEIGHT * 0.3);
         }
 
-        // Curtain
+        // --- BACK WALL OBJECTS ---
+        // Centered door + clock above
+        ctx.drawImage(Game.assets.door, LAYOUT.door.x, LAYOUT.door.y);
+        ctx.drawImage(Game.assets.clock, LAYOUT.clock.x, LAYOUT.clock.y);
+
+        // Mirror behind curtain (left)
+        ctx.drawImage(Game.assets.mirror, LAYOUT.mirror.x, LAYOUT.mirror.y);
+
+        // Curtain ON TOP of mirror
         const curtain = Game.gameState.curtainPulled ? Game.assets.curtainOpen : Game.assets.curtainClosed;
-        ctx.drawImage(curtain, 10, 100);
+        ctx.drawImage(curtain, LAYOUT.curtain.x, LAYOUT.curtain.y);
 
-        // Mirror
-        ctx.drawImage(Game.assets.mirror, 60, 120);
+        // Table under mirror (grounded)
+        Game.assets.table = Game.gameState.drawerOpen ? Game.assets.tableOpen : Game.assets.tableClosed;
+        ctx.drawImage(Game.assets.table, LAYOUT.table.x, LAYOUT.table.y);
 
-        // Table
-        ctx.drawImage(Game.assets.table, 400, 520);
-
-        // Bowl
+        // Bowl (right)
         const bowl = Game.gameState.bowlWarmed ? Game.assets.bowlWarmed : Game.assets.bowl;
-        ctx.drawImage(bowl, 850, 580);
+        ctx.drawImage(bowl, LAYOUT.bowl.x, LAYOUT.bowl.y);
 
-        // Cat
+        // CAT in foreground
         const cat = Game.gameState.catAwake ? Game.assets.catAwake : Game.assets.catSleeping;
-        ctx.drawImage(cat, 980, 500);
-
-        // Door
-        ctx.drawImage(Game.assets.door, 1030, 180);
-
-        // Clock above door
-        ctx.drawImage(Game.assets.clock, 1075, 60);
+        ctx.drawImage(cat, LAYOUT.cat.x, LAYOUT.cat.y);
 
         // Character (player silhouette in lower left)
         ctx.save();
         ctx.globalAlpha = 0.8;
         ctx.drawImage(Game.assets.character, 180, 520);
         ctx.restore();
+
+        // Subtle light breathing at door crack (feel > words)
+        const t = Game.time;
+        ctx.fillStyle = `rgba(255, 245, 220, ${0.05 + 0.04 * Math.sin(t * 2)})`;
+        ctx.fillRect(LAYOUT.door.x + 100, LAYOUT.door.y + 50, 20, 300);
 
         // Effects
         FX.drawVignette(ctx);
@@ -1771,7 +1685,7 @@ const SceneFinalEnding = {
                 mirrorCracked: true,
                 mirrorRepaired: false,
                 curtainPulled: false,
-                drawerOpened: false,
+                drawerOpen: false,
                 catAwake: false,
                 catFed: false,
                 bowlWarmed: false,
@@ -1851,11 +1765,25 @@ function setupInput() {
     canvas.addEventListener('mousedown', (e) => {
         updateMousePos(e);
         Game.mouse.down = true;
+        startHold();
         Hotspots.click(Game.mouse.worldX, Game.mouse.worldY);
     });
 
     canvas.addEventListener('mouseup', () => {
         Game.mouse.down = false;
+        const held = endHold();
+
+        // Mirror long-press to step through (no words)
+        if (Hotspots.hoveredId === 'mirror' && Game.gameState.mirrorRepaired && held > HOLD.mirror) {
+            Game.gameState.completedEndings.add('mirror_a');
+            SceneManager.changeState(STATES.ENDING_MIRROR_A);
+        }
+
+        // Door long-press to "wait with it" ending
+        if (Hotspots.hoveredId === 'door' && Game.gameState.doorLit && held > HOLD.door) {
+            Game.gameState.completedEndings.add('door_b');
+            SceneManager.changeState(STATES.ENDING_DOOR_B);
+        }
     });
 
     canvas.addEventListener('touchstart', (e) => {

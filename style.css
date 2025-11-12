@@ -34,7 +34,7 @@ body {
     max-height: 100%;
     image-rendering: crisp-edges;
     cursor: default;
-    filter: sepia(0.2) contrast(1.05) brightness(1.1);
+    filter: sepia(0.22) contrast(1.06) brightness(1.18);
     border: 3px solid #3d3226;
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 0, 0, 0.2);
 }
