@@ -1200,12 +1200,6 @@ const SceneRoom = {
         const cat = Game.gameState.catAwake ? Game.assets.catAwake : Game.assets.catSleeping;
         ctx.drawImage(cat, LAYOUT.cat.x, LAYOUT.cat.y);
 
-        // Character (player silhouette in lower left)
-        ctx.save();
-        ctx.globalAlpha = 0.8;
-        ctx.drawImage(Game.assets.character, 180, 520);
-        ctx.restore();
-
         // Floating dust particles for atmosphere
         const t = Game.time;
         ctx.save();
