@@ -37,10 +37,12 @@ body {
     filter: sepia(0.22) contrast(1.06) brightness(1.18);
     border: 3px solid #3d3226;
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 0, 0, 0.2);
+    transition: filter 0.3s ease;
 }
 
 #game-canvas.hover-hotspot {
     cursor: pointer;
+    filter: sepia(0.22) contrast(1.08) brightness(1.2);
 }
 
 #game-canvas.hover-grab {
@@ -82,13 +84,20 @@ body {
     padding: 6px 10px;
     cursor: pointer;
     pointer-events: all;
-    transition: all 0.2s;
+    transition: all 0.25s ease;
     box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    transform: scale(1);
 }
 
 #sound-toggle:hover {
     background: rgba(80, 65, 50, 0.9);
     border-color: #7a6a58;
+    transform: scale(1.05);
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.6);
+}
+
+#sound-toggle:active {
+    transform: scale(0.98);
 }
 
 /* Inventory System */
@@ -114,22 +123,27 @@ body {
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.25s ease;
     position: relative;
+    transform: scale(1);
 }
 
 .inventory-slot:hover {
     border-color: #8c7a5e;
     background: rgba(40, 34, 28, 0.95);
+    transform: scale(1.05);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5), 3px 3px 8px rgba(0, 0, 0, 0.6);
 }
 
 .inventory-slot.has-item {
     border-color: #9a8866;
+    animation: itemAppear 0.4s ease;
 }
 
 .inventory-slot.selected {
     border-color: #d4c5a9;
     box-shadow: inset 0 0 10px rgba(212, 197, 169, 0.3), 0 0 15px rgba(212, 197, 169, 0.4);
+    transform: scale(1.08);
 }
 
 .inventory-item {
@@ -137,6 +151,25 @@ body {
     height: 50px;
     object-fit: contain;
     filter: sepia(0.4);
+    transition: filter 0.2s ease;
+}
+
+.inventory-slot:hover .inventory-item {
+    filter: sepia(0.3) brightness(1.1);
+}
+
+@keyframes itemAppear {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .inventory-slot .item-label {
@@ -165,12 +198,18 @@ body {
     align-items: center;
     z-index: 50;
     opacity: 1;
-    transition: opacity 0.4s;
+    transition: opacity 0.4s ease, backdrop-filter 0.4s ease;
+    backdrop-filter: blur(0px);
+}
+
+#closeup-overlay:not(.hidden) {
+    backdrop-filter: blur(5px);
 }
 
 #closeup-overlay.hidden {
     opacity: 0;
     pointer-events: none;
+    backdrop-filter: blur(0px);
 }
 
 #closeup-canvas {
@@ -179,6 +218,12 @@ body {
     border: 3px solid #5a4a38;
     box-shadow: 0 0 30px rgba(0, 0, 0, 0.9);
     filter: sepia(0.3);
+    transform: scale(0.95);
+    transition: transform 0.4s ease;
+}
+
+#closeup-overlay:not(.hidden) #closeup-canvas {
+    transform: scale(1);
 }
 
 .back-btn {
@@ -192,14 +237,21 @@ body {
     font-size: 14px;
     padding: 8px 16px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.25s ease;
     text-transform: uppercase;
     letter-spacing: 1px;
+    transform: scale(1);
 }
 
 .back-btn:hover {
     background: rgba(80, 65, 50, 0.9);
     border-color: #8c7a5e;
+    transform: scale(1.05);
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.6);
+}
+
+.back-btn:active {
+    transform: scale(0.98);
 }
 
 #instruction-hint {
@@ -235,6 +287,16 @@ body {
     border: 1px solid #5a4a38;
     box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
     white-space: nowrap;
+    opacity: 0;
+    transform: translateY(-5px);
+    animation: tooltipFadeIn 0.2s ease forwards;
+}
+
+@keyframes tooltipFadeIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .ending-overlay {
@@ -249,7 +311,14 @@ body {
     align-items: center;
     z-index: 100;
     pointer-events: all;
-    background: rgba(10, 8, 6, 0.9);
+    background: rgba(10, 8, 6, 0);
+    animation: overlayFadeIn 0.6s ease forwards;
+}
+
+@keyframes overlayFadeIn {
+    to {
+        background: rgba(10, 8, 6, 0.95);
+    }
 }
 
 .ending-caption {
@@ -263,6 +332,16 @@ body {
     letter-spacing: 1px;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
     font-style: italic;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: captionFadeIn 0.8s ease 0.3s forwards;
+}
+
+@keyframes captionFadeIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .try-again-btn {
@@ -275,14 +354,28 @@ body {
     letter-spacing: 2px;
     padding: 12px 30px;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
     box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.6);
+    transform: scale(1);
+    opacity: 0;
+    animation: buttonFadeIn 0.5s ease 0.8s forwards;
+}
+
+@keyframes buttonFadeIn {
+    to {
+        opacity: 1;
+    }
 }
 
 .try-again-btn:hover {
     background: rgba(60, 54, 48, 0.95);
     border-color: #8c7a5e;
     box-shadow: 0 0 15px rgba(212, 197, 169, 0.3);
+    transform: scale(1.05);
+}
+
+.try-again-btn:active {
+    transform: scale(0.98);
 }
 
 .try-again-btn:focus {

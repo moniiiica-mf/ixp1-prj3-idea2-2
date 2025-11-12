@@ -821,38 +821,51 @@ const Assets = {
         ctx.fillStyle = '#1a1008';
         ctx.fillRect(0, 0, 220, 400);
 
-        // Door panels
+        // Left door panel (slightly open - pulled to left)
         ctx.fillStyle = '#2d1f15';
-        ctx.fillRect(15, 15, 190, 370);
+        ctx.fillRect(10, 15, 90, 370);
 
-        // Panel details
+        // Left panel details
         ctx.strokeStyle = '#1a1008';
         ctx.lineWidth = 3;
-        ctx.strokeRect(30, 30, 160, 150);
-        ctx.strokeRect(30, 200, 160, 150);
+        ctx.strokeRect(20, 30, 70, 150);
+        ctx.strokeRect(20, 200, 70, 150);
 
-        // Door knob
+        // Right door panel (stays in frame)
+        ctx.fillStyle = '#2d1f15';
+        ctx.fillRect(115, 15, 90, 370);
+
+        // Right panel details
+        ctx.strokeRect(125, 30, 70, 150);
+        ctx.strokeRect(125, 200, 70, 150);
+
+        // Door knob on left door
         ctx.fillStyle = '#4a3428';
         ctx.beginPath();
-        ctx.arc(175, 220, 10, 0, Math.PI * 2);
+        ctx.arc(85, 220, 8, 0, Math.PI * 2);
         ctx.fill();
 
-        // Light from bottom
-        const gradient = ctx.createLinearGradient(110, 400, 110, 300);
-        gradient.addColorStop(0, `rgba(255, 220, 150, ${lightIntensity})`);
-        gradient.addColorStop(1, 'rgba(255, 220, 150, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(20, 300, 180, 100);
+        // Gap between doors (slightly open)
+        const gapX = 100;
+        const gapWidth = 15;
 
-        // Light from crack
-        if (lightIntensity > 0.4) {
-            ctx.fillStyle = `rgba(255, 240, 200, ${lightIntensity * 0.8})`;
-            ctx.fillRect(107, 50, 6, 300);
-        }
+        // Light from gap (soft glow)
+        const gapGradient = ctx.createRadialGradient(gapX + gapWidth/2, 200, 5, gapX + gapWidth/2, 200, 80);
+        gapGradient.addColorStop(0, `rgba(255, 240, 200, ${lightIntensity * 0.9})`);
+        gapGradient.addColorStop(1, 'rgba(255, 240, 200, 0)');
+        ctx.fillStyle = gapGradient;
+        ctx.fillRect(gapX - 40, 15, gapWidth + 80, 370);
 
-        // Constant hairline crack (door slightly open)
-        ctx.fillStyle = 'rgba(255, 240, 200, 0.35)';
-        ctx.fillRect(108, 55, 4, 290);
+        // Bright light strip in the gap itself
+        ctx.fillStyle = `rgba(255, 245, 220, ${lightIntensity * 0.7})`;
+        ctx.fillRect(gapX, 15, gapWidth, 370);
+
+        // Light from bottom gap
+        const bottomGradient = ctx.createLinearGradient(110, 400, 110, 330);
+        bottomGradient.addColorStop(0, `rgba(255, 220, 150, ${lightIntensity * 0.6})`);
+        bottomGradient.addColorStop(1, 'rgba(255, 220, 150, 0)');
+        ctx.fillStyle = bottomGradient;
+        ctx.fillRect(gapX - 20, 330, gapWidth + 40, 70);
 
         return canvas;
     },
@@ -1209,10 +1222,17 @@ const SceneRoom = {
         ctx.drawImage(Game.assets.character, 180, 520);
         ctx.restore();
 
-        // Subtle light breathing at door crack (feel > words)
+        // Subtle light breathing from door gap
         const t = Game.time;
-        ctx.fillStyle = `rgba(255, 245, 220, ${0.05 + 0.04 * Math.sin(t * 2)})`;
-        ctx.fillRect(LAYOUT.door.x + 100, LAYOUT.door.y + 50, 20, 300);
+        const gapX = LAYOUT.door.x + 100; // Gap position
+        const breathIntensity = 0.06 + 0.05 * Math.sin(t * 1.5);
+
+        // Breathing glow from the gap
+        const breathGradient = ctx.createRadialGradient(gapX + 7, LAYOUT.door.y + 200, 5, gapX + 7, LAYOUT.door.y + 200, 100);
+        breathGradient.addColorStop(0, `rgba(255, 240, 200, ${breathIntensity * 0.8})`);
+        breathGradient.addColorStop(1, 'rgba(255, 240, 200, 0)');
+        ctx.fillStyle = breathGradient;
+        ctx.fillRect(gapX - 50, LAYOUT.door.y, 100, 400);
 
         // Floating dust particles for atmosphere
         ctx.save();
