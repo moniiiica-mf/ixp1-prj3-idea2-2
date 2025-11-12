@@ -845,27 +845,11 @@ const Assets = {
         ctx.arc(85, 220, 8, 0, Math.PI * 2);
         ctx.fill();
 
-        // Gap between doors (slightly open)
+        // Gap between doors (slightly open) - just darkness
         const gapX = 100;
         const gapWidth = 15;
-
-        // Light from gap (soft glow)
-        const gapGradient = ctx.createRadialGradient(gapX + gapWidth/2, 200, 5, gapX + gapWidth/2, 200, 80);
-        gapGradient.addColorStop(0, `rgba(255, 240, 200, ${lightIntensity * 0.9})`);
-        gapGradient.addColorStop(1, 'rgba(255, 240, 200, 0)');
-        ctx.fillStyle = gapGradient;
-        ctx.fillRect(gapX - 40, 15, gapWidth + 80, 370);
-
-        // Bright light strip in the gap itself
-        ctx.fillStyle = `rgba(255, 245, 220, ${lightIntensity * 0.7})`;
+        ctx.fillStyle = '#0a0806';
         ctx.fillRect(gapX, 15, gapWidth, 370);
-
-        // Light from bottom gap
-        const bottomGradient = ctx.createLinearGradient(110, 400, 110, 330);
-        bottomGradient.addColorStop(0, `rgba(255, 220, 150, ${lightIntensity * 0.6})`);
-        bottomGradient.addColorStop(1, 'rgba(255, 220, 150, 0)');
-        ctx.fillStyle = bottomGradient;
-        ctx.fillRect(gapX - 20, 330, gapWidth + 40, 70);
 
         return canvas;
     },
@@ -1153,7 +1137,7 @@ const SceneRoom = {
             Game.assets.door = Assets.generateDoor(0.7);
             AudioEngine.playTick();
             Inventory.deselect();
-            showAtmosphericText('Light seeps through. The door calls to you.', 3.0);
+            showAtmosphericText('The door beckons. Something waits beyond.', 3.0);
             setTimeout(() => this.setupHotspots(), 500);
         } else if (Game.gameState.doorLit) {
             // Quick open = false awakening
@@ -1222,19 +1206,8 @@ const SceneRoom = {
         ctx.drawImage(Game.assets.character, 180, 520);
         ctx.restore();
 
-        // Subtle light breathing from door gap
-        const t = Game.time;
-        const gapX = LAYOUT.door.x + 100; // Gap position
-        const breathIntensity = 0.06 + 0.05 * Math.sin(t * 1.5);
-
-        // Breathing glow from the gap
-        const breathGradient = ctx.createRadialGradient(gapX + 7, LAYOUT.door.y + 200, 5, gapX + 7, LAYOUT.door.y + 200, 100);
-        breathGradient.addColorStop(0, `rgba(255, 240, 200, ${breathIntensity * 0.8})`);
-        breathGradient.addColorStop(1, 'rgba(255, 240, 200, 0)');
-        ctx.fillStyle = breathGradient;
-        ctx.fillRect(gapX - 50, LAYOUT.door.y, 100, 400);
-
         // Floating dust particles for atmosphere
+        const t = Game.time;
         ctx.save();
         for (let i = 0; i < 15; i++) {
             const x = ((i * 123 + t * 20) % BASE_WIDTH);
@@ -1656,9 +1629,8 @@ const SceneEndingDoorA = {
         this.endingOverlay.className = 'ending-overlay';
         this.endingOverlay.innerHTML = `
             <div class="ending-caption">
-                Light floods through the open door.<br><br>
-                You step forward into brightness, into awakening—<br>
-                But the clock still reads 3:33.
+                You push through the door into another room.<br><br>
+                The same room. The clock still reads 3:33.
             </div>
             <button class="try-again-btn" id="ending-return">Continue</button>
         `;
@@ -1745,8 +1717,8 @@ const SceneEndingDoorB = {
         this.endingOverlay.className = 'ending-overlay';
         this.endingOverlay.innerHTML = `
             <div class="ending-caption">
-                You wait with the light, patient.<br><br>
-                It waits with you.<br><br>
+                You wait at the door, patient.<br><br>
+                The silence waits with you.<br><br>
                 When you finally step through, you're already somewhere else.
             </div>
             <button class="try-again-btn" id="ending-return">Continue</button>
