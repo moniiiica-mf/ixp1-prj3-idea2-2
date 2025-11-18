@@ -1012,11 +1012,19 @@ const SceneIntro = {
 // --- SCENE: ROOM ---
 const SceneRoom = {
     doorLightPulse: 0,
+    curtainSway: 0,
+    mirrorRipple: 0,
+    catEyeFollow: { x: 0, y: 0 },
+    clockTick: 0,
 
     enter() {
         this.setupHotspots();
         AudioEngine.startDrone();
         this.doorLightPulse = 0;
+        this.curtainSway = 0;
+        this.mirrorRipple = 0;
+        this.catEyeFollow = { x: 0, y: 0 };
+        this.clockTick = 0;
 
         // Update clock display
         const clockDisplay = document.getElementById('clock-time');
@@ -1232,6 +1240,29 @@ const SceneRoom = {
 
     update(dt) {
         this.doorLightPulse += dt;
+        this.curtainSway += dt;
+        this.clockTick += dt;
+
+        // Mirror ripple when hovering
+        const mirrorHovered = Hotspots.hoveredId === 'mirror';
+        if (mirrorHovered && Game.gameState.curtainPulled) {
+            this.mirrorRipple += dt * 4;
+        } else {
+            this.mirrorRipple = Math.max(0, this.mirrorRipple - dt * 2);
+        }
+
+        // Cat eyes follow mouse smoothly
+        if (Game.gameState.catAwake) {
+            const catCenterX = LAYOUT.cat.x + LAYOUT.cat.w / 2;
+            const catCenterY = LAYOUT.cat.y + LAYOUT.cat.h / 2;
+            const targetX = (Game.mouse.worldX - catCenterX) * 0.02;
+            const targetY = (Game.mouse.worldY - catCenterY) * 0.02;
+
+            // Smooth interpolation
+            this.catEyeFollow.x += (targetX - this.catEyeFollow.x) * 0.05;
+            this.catEyeFollow.y += (targetY - this.catEyeFollow.y) * 0.05;
+        }
+
         Hotspots.update(Game.mouse.worldX, Game.mouse.worldY);
 
         // Update atmospheric text timer
@@ -1265,12 +1296,35 @@ const SceneRoom = {
         ctx.drawImage(Game.assets.door, LAYOUT.door.x, LAYOUT.door.y);
         ctx.drawImage(Game.assets.clock, LAYOUT.clock.x, LAYOUT.clock.y);
 
-        // Mirror behind curtain (left)
+        // Mirror behind curtain (left) - add ripple effect when hovered
+        ctx.save();
+        if (this.mirrorRipple > 0 && Game.gameState.curtainPulled) {
+            // Subtle ripple distortion
+            ctx.translate(Math.sin(this.mirrorRipple * 3) * 1.5, Math.cos(this.mirrorRipple * 2) * 1);
+        }
         ctx.drawImage(Game.assets.mirror, LAYOUT.mirror.x, LAYOUT.mirror.y);
 
-        // Curtain ON TOP of mirror
+        // Mirror surface glow when hovered
+        if (this.mirrorRipple > 0 && Game.gameState.curtainPulled) {
+            const rippleIntensity = Math.sin(this.mirrorRipple * 2) * 0.1 + 0.1;
+            ctx.fillStyle = `rgba(100, 150, 200, ${rippleIntensity})`;
+            ctx.beginPath();
+            ctx.ellipse(LAYOUT.mirror.x + LAYOUT.mirror.w/2, LAYOUT.mirror.y + LAYOUT.mirror.h/2,
+                        100, 145, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+
+        // Curtain ON TOP of mirror - add subtle sway when not pulled
+        ctx.save();
         const curtain = Game.gameState.curtainPulled ? Game.assets.curtainOpen : Game.assets.curtainClosed;
+        if (!Game.gameState.curtainPulled) {
+            // Subtle sway animation
+            const swayAmount = Math.sin(this.curtainSway * 0.8) * 2;
+            ctx.translate(swayAmount, 0);
+        }
         ctx.drawImage(curtain, LAYOUT.curtain.x, LAYOUT.curtain.y);
+        ctx.restore();
 
         // Table under mirror (grounded)
         Game.assets.table = Game.gameState.drawerOpen ? Game.assets.tableOpen : Game.assets.tableClosed;
@@ -1283,6 +1337,36 @@ const SceneRoom = {
         // CAT in foreground
         const cat = Game.gameState.catAwake ? Game.assets.catAwake : Game.assets.catSleeping;
         ctx.drawImage(cat, LAYOUT.cat.x, LAYOUT.cat.y);
+
+        // If cat is awake, draw eyes that follow cursor
+        if (Game.gameState.catAwake) {
+            const eyePositions = [
+                [LAYOUT.cat.x + 145, LAYOUT.cat.y + 57],
+                [LAYOUT.cat.x + 155, LAYOUT.cat.y + 57],
+                [LAYOUT.cat.x + 150, LAYOUT.cat.y + 52]
+            ];
+
+            ctx.fillStyle = '#64ff80';
+            eyePositions.forEach(([x, y]) => {
+                ctx.beginPath();
+                ctx.arc(x + this.catEyeFollow.x, y + this.catEyeFollow.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Add glow effect around eyes
+            eyePositions.forEach(([x, y]) => {
+                const glowGradient = ctx.createRadialGradient(
+                    x + this.catEyeFollow.x, y + this.catEyeFollow.y, 0,
+                    x + this.catEyeFollow.x, y + this.catEyeFollow.y, 8
+                );
+                glowGradient.addColorStop(0, 'rgba(100, 255, 128, 0.4)');
+                glowGradient.addColorStop(1, 'rgba(100, 255, 128, 0)');
+                ctx.fillStyle = glowGradient;
+                ctx.beginPath();
+                ctx.arc(x + this.catEyeFollow.x, y + this.catEyeFollow.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
 
         // Floating dust particles for atmosphere
         const t = Game.time;
