@@ -13,6 +13,10 @@ const STATES = {
     INTRO: 'INTRO',
     ROOM: 'ROOM',
     CLOSEUP: 'CLOSEUP',
+    MIRROR_WORLD: 'MIRROR_WORLD',
+    ATTIC: 'ATTIC',
+    CORRIDOR: 'CORRIDOR',
+    BEDROOM: 'BEDROOM',
     ENDING_MIRROR_A: 'ENDING_MIRROR_A',
     ENDING_MIRROR_B: 'ENDING_MIRROR_B',
     ENDING_CAT_A: 'ENDING_CAT_A',
@@ -1323,6 +1327,1020 @@ const SceneRoom = {
     }
 };
 
+// --- SCENE: MIRROR WORLD ---
+const SceneMirrorWorld = {
+    doorLightPulse: 0,
+    mirrorOutlineGlow: 0,
+
+    enter() {
+        this.setupHotspots();
+        AudioEngine.startDrone();
+        this.doorLightPulse = 0;
+        this.mirrorOutlineGlow = 0;
+
+        // Show atmospheric text
+        setTimeout(() => {
+            showAtmosphericText('Everything is familiar. Everything is wrong. The room breathes backwards.', 4.5);
+        }, 500);
+    },
+
+    exit() {
+        Hotspots.clear();
+    },
+
+    setupHotspots() {
+        Hotspots.clear();
+
+        // Curtain on far right (no mirror behind)
+        const curtainX = BASE_WIDTH - LAYOUT.curtain.x - LAYOUT.curtain.w;
+        Hotspots.add('curtain-mirror', curtainX, LAYOUT.curtain.y, LAYOUT.curtain.w, LAYOUT.curtain.h,
+            'Curtain', () => this.handleCurtainMirror());
+
+        // Invisible mirror outline that can pull player back
+        const mirrorX = BASE_WIDTH - LAYOUT.mirror.x - LAYOUT.mirror.w;
+        Hotspots.add('mirror-outline', mirrorX, LAYOUT.mirror.y, LAYOUT.mirror.w, LAYOUT.mirror.h,
+            'Something familiar...', () => this.handleMirrorOutline());
+
+        // Three eye-shaped stains where cat was
+        const catX = BASE_WIDTH - LAYOUT.cat.x - LAYOUT.cat.w;
+        Hotspots.add('eye-stains', catX, LAYOUT.cat.y, LAYOUT.cat.w, LAYOUT.cat.h,
+            'Stains', () => this.handleEyeStains());
+
+        // Door (light on opposite side)
+        Hotspots.add('door-mirror', LAYOUT.door.x, LAYOUT.door.y, LAYOUT.door.w, LAYOUT.door.h,
+            'Door', () => this.handleDoorMirror());
+
+        // Clock (backwards)
+        Hotspots.add('clock-mirror', LAYOUT.clock.x, LAYOUT.clock.y, LAYOUT.clock.w, LAYOUT.clock.h,
+            'Clock', () => this.handleClockMirror());
+    },
+
+    handleCurtainMirror() {
+        showAtmosphericText('The curtain hangs still. There\'s nothing behind it. There never was.', 3.0);
+        AudioEngine.playWhoosh();
+    },
+
+    handleMirrorOutline() {
+        showAtmosphericText('An outline on the wall. A ghost of glass. It pulls at you.', 3.5);
+        AudioEngine.playWhoosh();
+
+        // After a moment, get pulled back and loop
+        setTimeout(() => {
+            this.returnToRoom();
+        }, 3000);
+    },
+
+    handleEyeStains() {
+        showAtmosphericText('Three dark stains. Eye-shaped. They watch you. They blink when you don\'t.', 4.0);
+        AudioEngine.playMeow();
+    },
+
+    handleDoorMirror() {
+        showAtmosphericText('The door is closed. Light seeps from the wrong side.', 2.5);
+        AudioEngine.playTick();
+    },
+
+    handleClockMirror() {
+        showAtmosphericText('The clock reads 3:34. The second hand ticks backwards.', 3.0);
+        AudioEngine.playTick();
+    },
+
+    returnToRoom() {
+        SceneEndingMirrorA.prototype.incrementLoop.call(this);
+        SceneManager.changeState(STATES.ROOM);
+    },
+
+    update(dt) {
+        this.doorLightPulse += dt;
+        this.mirrorOutlineGlow += dt;
+        Hotspots.update(Game.mouse.worldX, Game.mouse.worldY);
+
+        // Update atmospheric text timer
+        if (Game.gameState.atmosphericText) {
+            Game.gameState.atmosphericTextTimer += dt;
+            if (Game.gameState.atmosphericTextTimer >= Game.gameState.atmosphericTextDuration) {
+                Game.gameState.atmosphericText = null;
+            }
+        }
+    },
+
+    draw(ctx) {
+        // Flip everything horizontally and use cooler color palette
+        ctx.save();
+        ctx.translate(BASE_WIDTH, 0);
+        ctx.scale(-1, 1);
+
+        // WALL with cooler tones (blue/green tint)
+        const bgGradient = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
+        bgGradient.addColorStop(0, '#324a46');
+        bgGradient.addColorStop(0.65, '#223a36');
+        bgGradient.addColorStop(1, '#122a26');
+        ctx.fillStyle = bgGradient;
+        ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+        // FLOOR boards with cooler tones
+        ctx.fillStyle = '#1d2e2a';
+        ctx.fillRect(0, BASE_HEIGHT * 0.7, BASE_WIDTH, BASE_HEIGHT * 0.3);
+        for (let i = 0; i < 20; i++) {
+            ctx.fillStyle = i % 2 ? '#1a2a26' : '#203028';
+            ctx.fillRect(i * 64, BASE_HEIGHT * 0.7, 64, BASE_HEIGHT * 0.3);
+        }
+
+        // Door (centered, closed)
+        ctx.fillStyle = '#1a1008';
+        ctx.fillRect(LAYOUT.door.x, LAYOUT.door.y, LAYOUT.door.w, LAYOUT.door.h);
+
+        // Door panels (both closed)
+        ctx.fillStyle = '#2d1f15';
+        ctx.fillRect(LAYOUT.door.x + 10, LAYOUT.door.y + 15, 90, 370);
+        ctx.fillRect(LAYOUT.door.x + 115, LAYOUT.door.y + 15, 90, 370);
+
+        // Panel details
+        ctx.strokeStyle = '#1a1008';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(LAYOUT.door.x + 20, LAYOUT.door.y + 30, 70, 150);
+        ctx.strokeRect(LAYOUT.door.x + 20, LAYOUT.door.y + 200, 70, 150);
+        ctx.strokeRect(LAYOUT.door.x + 125, LAYOUT.door.y + 30, 70, 150);
+        ctx.strokeRect(LAYOUT.door.x + 125, LAYOUT.door.y + 200, 70, 150);
+
+        // Clock (3:34, backwards second hand)
+        const clockCanvas = document.createElement('canvas');
+        clockCanvas.width = 120;
+        clockCanvas.height = 120;
+        const clockCtx = clockCanvas.getContext('2d');
+
+        // Clock face
+        clockCtx.fillStyle = '#d8e8e0';
+        clockCtx.beginPath();
+        clockCtx.arc(60, 60, 50, 0, Math.PI * 2);
+        clockCtx.fill();
+        clockCtx.strokeStyle = '#3d4847';
+        clockCtx.lineWidth = 4;
+        clockCtx.stroke();
+
+        // Hour marks
+        clockCtx.fillStyle = '#1a2028';
+        for (let i = 0; i < 12; i++) {
+            const angle = (i * 30 - 90) * Math.PI / 180;
+            const x = 60 + Math.cos(angle) * 40;
+            const y = 60 + Math.sin(angle) * 40;
+            clockCtx.beginPath();
+            clockCtx.arc(x, y, 3, 0, Math.PI * 2);
+            clockCtx.fill();
+        }
+
+        // Hour hand (3:34)
+        const hourAngle = ((3 % 12) * 30 + 34 * 0.5 - 90) * Math.PI / 180;
+        clockCtx.strokeStyle = '#1a2028';
+        clockCtx.lineWidth = 5;
+        clockCtx.beginPath();
+        clockCtx.moveTo(60, 60);
+        clockCtx.lineTo(60 + Math.cos(hourAngle) * 25, 60 + Math.sin(hourAngle) * 25);
+        clockCtx.stroke();
+
+        // Minute hand (34)
+        const minuteAngle = (34 * 6 - 90) * Math.PI / 180;
+        clockCtx.lineWidth = 3;
+        clockCtx.beginPath();
+        clockCtx.moveTo(60, 60);
+        clockCtx.lineTo(60 + Math.cos(minuteAngle) * 35, 60 + Math.sin(minuteAngle) * 35);
+        clockCtx.stroke();
+
+        // Center dot
+        clockCtx.fillStyle = '#1a2028';
+        clockCtx.beginPath();
+        clockCtx.arc(60, 60, 5, 0, Math.PI * 2);
+        clockCtx.fill();
+
+        ctx.drawImage(clockCanvas, LAYOUT.clock.x, LAYOUT.clock.y);
+
+        // Curtain on far right (no mirror)
+        ctx.drawImage(Game.assets.curtainClosed, LAYOUT.curtain.x, LAYOUT.curtain.y);
+
+        // Three eye-shaped stains where cat was
+        ctx.fillStyle = '#0a1a16';
+        const catX = LAYOUT.cat.x + LAYOUT.cat.w / 2;
+        const catY = LAYOUT.cat.y + LAYOUT.cat.h / 2;
+
+        // Three eye shapes
+        [[0, -15], [-25, 10], [25, 10]].forEach(([dx, dy]) => {
+            ctx.save();
+            ctx.translate(catX + dx, catY + dy);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 8, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Blink effect
+            if (Math.sin(this.mirrorOutlineGlow * 0.7 + dx * 0.1) > 0.85) {
+                ctx.fillStyle = '#64ff80';
+                ctx.beginPath();
+                ctx.arc(0, 0, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        });
+
+        // Invisible mirror outline (glowing faintly)
+        const glowIntensity = 0.1 + Math.sin(this.mirrorOutlineGlow) * 0.05;
+        ctx.strokeStyle = `rgba(100, 255, 180, ${glowIntensity})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(LAYOUT.mirror.x + LAYOUT.mirror.w/2, LAYOUT.mirror.y + LAYOUT.mirror.h/2,
+                    LAYOUT.mirror.w/2 - 10, LAYOUT.mirror.h/2 - 10, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.restore(); // End flip
+
+        // Effects
+        FX.drawVignette(ctx);
+        FX.drawGrain(ctx);
+
+        // Atmospheric text overlay
+        if (Game.gameState.atmosphericText) {
+            const fadeIn = 0.6;
+            const fadeOut = 0.8;
+            const timer = Game.gameState.atmosphericTextTimer;
+            const duration = Game.gameState.atmosphericTextDuration;
+
+            let alpha = 1;
+            if (timer < fadeIn) {
+                alpha = timer / fadeIn;
+            } else if (timer > duration - fadeOut) {
+                alpha = (duration - timer) / fadeOut;
+            }
+
+            ctx.save();
+            ctx.fillStyle = `rgba(100, 255, 180, ${alpha * 0.9})`;
+            ctx.font = 'italic 16px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+            ctx.shadowBlur = 4;
+            ctx.fillText(Game.gameState.atmosphericText, BASE_WIDTH / 2, BASE_HEIGHT - 80);
+            ctx.restore();
+        }
+    }
+};
+
+// --- SCENE: CAT ATTIC ---
+const SceneAttic = {
+    cabinetShake: 0,
+    portraitRotation: 0,
+    moonPulse: 0,
+
+    enter() {
+        this.setupHotspots();
+        AudioEngine.startDrone();
+        this.cabinetShake = 0;
+        this.portraitRotation = 0;
+        this.moonPulse = 0;
+
+        // Show atmospheric text
+        setTimeout(() => {
+            showAtmosphericText('The attic smells of dust and something else. Something watching.', 4.0);
+        }, 500);
+    },
+
+    exit() {
+        Hotspots.clear();
+    },
+
+    setupHotspots() {
+        Hotspots.clear();
+
+        // Three-eyed cat on chair
+        Hotspots.add('attic-cat', 200, 400, 180, 150,
+            'Cat', () => this.handleAtticCat());
+
+        // Box of hair on table
+        Hotspots.add('hair-box', 500, 480, 120, 100,
+            'Box', () => this.handleHairBox());
+
+        // Shaking cabinet
+        Hotspots.add('cabinet', 850, 350, 200, 280,
+            'Cabinet', () => this.handleCabinet());
+
+        // Portrait with wrong eyes
+        Hotspots.add('portrait', 100, 120, 150, 200,
+            'Portrait', () => this.handlePortrait());
+
+        // Window with three-eyed moon
+        Hotspots.add('window', 950, 80, 200, 180,
+            'Window', () => this.handleWindow());
+    },
+
+    handleAtticCat() {
+        showAtmosphericText('The cat sits perfectly still. Its three eyes follow you. It doesn\'t blink.', 3.5);
+        AudioEngine.playMeow();
+    },
+
+    handleHairBox() {
+        showAtmosphericText('A wooden box. Filled with hair. Different colors. Different lengths. All carefully arranged.', 4.0);
+        AudioEngine.playTick();
+    },
+
+    handleCabinet() {
+        showAtmosphericText('The cabinet trembles. Something inside wants out. You don\'t open it.', 3.5);
+        AudioEngine.playWhoosh();
+    },
+
+    handlePortrait() {
+        showAtmosphericText('A portrait of someone. They have the wrong number of eyes. They blink when you look away.', 4.5);
+        AudioEngine.playTick();
+
+        // After examining portrait several times, trigger return
+        setTimeout(() => {
+            this.returnToRoom();
+        }, 4000);
+    },
+
+    handleWindow() {
+        showAtmosphericText('The moon has three eyes. It sees everything. It always has.', 3.5);
+        AudioEngine.playTick();
+    },
+
+    returnToRoom() {
+        SceneEndingMirrorA.prototype.incrementLoop.call(this);
+        SceneManager.changeState(STATES.ROOM);
+    },
+
+    update(dt) {
+        this.cabinetShake += dt;
+        this.portraitRotation += dt;
+        this.moonPulse += dt;
+        Hotspots.update(Game.mouse.worldX, Game.mouse.worldY);
+
+        // Update atmospheric text timer
+        if (Game.gameState.atmosphericText) {
+            Game.gameState.atmosphericTextTimer += dt;
+            if (Game.gameState.atmosphericTextTimer >= Game.gameState.atmosphericTextDuration) {
+                Game.gameState.atmosphericText = null;
+            }
+        }
+    },
+
+    draw(ctx) {
+        // Dark attic atmosphere
+        const bgGradient = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
+        bgGradient.addColorStop(0, '#2a2218');
+        bgGradient.addColorStop(0.65, '#1a1208');
+        bgGradient.addColorStop(1, '#0a0804');
+        ctx.fillStyle = bgGradient;
+        ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+        // Wooden floor (attic boards)
+        ctx.fillStyle = '#3d2817';
+        ctx.fillRect(0, BASE_HEIGHT * 0.65, BASE_WIDTH, BASE_HEIGHT * 0.35);
+        for (let i = 0; i < 20; i++) {
+            ctx.fillStyle = i % 2 ? '#3a2515' : '#402a19';
+            ctx.fillRect(i * 64, BASE_HEIGHT * 0.65, 64, BASE_HEIGHT * 0.35);
+        }
+
+        // Window with cracked glass (top right)
+        ctx.fillStyle = '#1a1a2a';
+        ctx.fillRect(950, 80, 200, 180);
+        ctx.strokeStyle = '#4a3428';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(950, 80, 200, 180);
+
+        // Window panes
+        ctx.strokeStyle = '#2a1810';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(1050, 80);
+        ctx.lineTo(1050, 260);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(950, 170);
+        ctx.lineTo(1150, 170);
+        ctx.stroke();
+
+        // Crack in window
+        ctx.strokeStyle = '#0a0a0a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(980, 100);
+        ctx.lineTo(1000, 130);
+        ctx.lineTo(990, 160);
+        ctx.stroke();
+
+        // Three-eyed moon
+        ctx.fillStyle = `rgba(200, 200, 210, ${0.8 + Math.sin(this.moonPulse) * 0.2})`;
+        ctx.beginPath();
+        ctx.arc(1050, 140, 30, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Moon's three eyes
+        ctx.fillStyle = '#1a1a1a';
+        [[1045, 135], [1055, 135], [1050, 145]].forEach(([x, y]) => {
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Portrait on wall (left)
+        ctx.fillStyle = '#2a1810';
+        ctx.fillRect(100, 120, 150, 200);
+        ctx.strokeStyle = '#4a3428';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(100, 120, 150, 200);
+
+        // Portrait face (wrong number of eyes - rotates slightly)
+        ctx.save();
+        ctx.translate(175, 220);
+        ctx.rotate(Math.sin(this.portraitRotation * 0.3) * 0.05);
+
+        ctx.fillStyle = '#d4c5a9';
+        ctx.beginPath();
+        ctx.arc(0, 0, 40, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Four eyes arranged in a diamond (blink independently)
+        const eyePositions = [[-15, -10], [15, -10], [-15, 10], [15, 10]];
+        ctx.fillStyle = '#1a1a1a';
+        eyePositions.forEach(([dx, dy], idx) => {
+            if (Math.sin(this.portraitRotation * 0.5 + idx) > 0.7) {
+                // Blinking
+                ctx.fillRect(dx - 3, dy, 6, 2);
+            } else {
+                ctx.beginPath();
+                ctx.arc(dx, dy, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+
+        ctx.restore();
+
+        // Shaking cabinet
+        const shakeX = 850 + Math.sin(this.cabinetShake * 8) * 3;
+        const shakeY = 350 + Math.cos(this.cabinetShake * 12) * 2;
+
+        ctx.fillStyle = '#2a1810';
+        ctx.fillRect(shakeX, shakeY, 200, 280);
+        ctx.strokeStyle = '#1a1008';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(shakeX, shakeY, 200, 280);
+
+        // Cabinet doors
+        ctx.strokeStyle = '#1a1008';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(shakeX + 10, shakeY + 10, 85, 260);
+        ctx.strokeRect(shakeX + 105, shakeY + 10, 85, 260);
+
+        // Cabinet handles
+        ctx.fillStyle = '#6b533e';
+        ctx.beginPath();
+        ctx.arc(shakeX + 70, shakeY + 140, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(shakeX + 130, shakeY + 140, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Table with box of hair
+        ctx.fillStyle = '#3d2817';
+        ctx.fillRect(450, 530, 220, 140);
+
+        // Table legs
+        ctx.fillRect(460, 580, 12, 90);
+        ctx.fillRect(648, 580, 12, 90);
+
+        // Box on table
+        ctx.fillStyle = '#4a3428';
+        ctx.fillRect(500, 480, 120, 100);
+        ctx.strokeStyle = '#2a1810';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(500, 480, 120, 100);
+
+        // Hair strands visible from box
+        ctx.strokeStyle = '#8b7355';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 12; i++) {
+            ctx.beginPath();
+            ctx.moveTo(510 + i * 8, 490);
+            ctx.lineTo(505 + i * 8, 520 + Math.sin(i) * 10);
+            ctx.stroke();
+        }
+
+        // Three-eyed cat on chair (foreground)
+        // Chair
+        ctx.fillStyle = '#2a1810';
+        ctx.fillRect(200, 500, 180, 50);
+        ctx.fillRect(210, 420, 15, 80);
+        ctx.fillRect(355, 420, 15, 80);
+
+        // Cat body (same as before but three eyes)
+        ctx.fillStyle = '#0b0b0b';
+
+        // Body
+        ctx.beginPath();
+        ctx.ellipse(290, 478, 70, 40, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Head
+        ctx.beginPath();
+        ctx.ellipse(350, 460, 24, 22, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ears
+        ctx.beginPath();
+        ctx.moveTo(360, 439);
+        ctx.lineTo(370, 455);
+        ctx.lineTo(352, 450);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(342, 440);
+        ctx.lineTo(350, 452);
+        ctx.lineTo(336, 450);
+        ctx.closePath();
+        ctx.fill();
+
+        // Three glowing eyes (arranged in triangle)
+        ctx.fillStyle = '#64ff80';
+        [[345, 457], [355, 457], [350, 450]].forEach(p => {
+            ctx.beginPath();
+            ctx.arc(p[0], p[1], 3, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Tail
+        ctx.lineWidth = 10;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#0b0b0b';
+        ctx.beginPath();
+        ctx.moveTo(230, 485);
+        ctx.quadraticCurveTo(210, 460, 232, 445);
+        ctx.stroke();
+
+        // Effects
+        FX.drawVignette(ctx);
+        FX.drawGrain(ctx);
+
+        // Atmospheric text overlay
+        if (Game.gameState.atmosphericText) {
+            const fadeIn = 0.6;
+            const fadeOut = 0.8;
+            const timer = Game.gameState.atmosphericTextTimer;
+            const duration = Game.gameState.atmosphericTextDuration;
+
+            let alpha = 1;
+            if (timer < fadeIn) {
+                alpha = timer / fadeIn;
+            } else if (timer > duration - fadeOut) {
+                alpha = (duration - timer) / fadeOut;
+            }
+
+            ctx.save();
+            ctx.fillStyle = `rgba(212, 197, 169, ${alpha * 0.9})`;
+            ctx.font = 'italic 16px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+            ctx.shadowBlur = 4;
+            ctx.fillText(Game.gameState.atmosphericText, BASE_WIDTH / 2, BASE_HEIGHT - 80);
+            ctx.restore();
+        }
+    }
+};
+
+// --- SCENE: CORRIDOR ---
+const SceneCorridor = {
+    scrollProgress: 0,
+    portraitFeatures: 0,
+
+    enter() {
+        this.setupHotspots();
+        AudioEngine.startDrone();
+        this.scrollProgress = 0;
+        this.portraitFeatures = 0;
+
+        // Show atmospheric text
+        setTimeout(() => {
+            showAtmosphericText('A white corridor stretches endlessly. Portraits watch you walk. They weren\'t watching before.', 5.0);
+        }, 500);
+    },
+
+    exit() {
+        Hotspots.clear();
+    },
+
+    setupHotspots() {
+        Hotspots.clear();
+
+        // Portraits (gain features as you interact)
+        for (let i = 0; i < 4; i++) {
+            Hotspots.add(`portrait-${i}`, 100 + i * 280, 150, 120, 180,
+                'Portrait', () => this.handlePortrait(i));
+        }
+
+        // Window at end
+        Hotspots.add('corridor-window', BASE_WIDTH - 280, 200, 200, 200,
+            'Window', () => this.handleWindow());
+
+        // Door to bedroom
+        Hotspots.add('bedroom-door', BASE_WIDTH - 220, 300, 180, 350,
+            'Door', () => this.handleBedroomDoor());
+    },
+
+    handlePortrait(index) {
+        this.portraitFeatures++;
+
+        const messages = [
+            'The portrait is blank. No face. No eyes. Nothing.',
+            'A face begins to form. Eyes, nose, mouth. All familiar.',
+            'The portrait looks like someone you know. Or knew. Or will know.',
+            'The eyes in the portrait blink. They see you seeing them.'
+        ];
+
+        const msgIndex = Math.min(this.portraitFeatures, messages.length - 1);
+        showAtmosphericText(messages[msgIndex], 3.5);
+        AudioEngine.playTick();
+    },
+
+    handleWindow() {
+        showAtmosphericText('A window. It shows Room 0. But you\'re not there. The room is empty. Waiting.', 4.0);
+        AudioEngine.playWhoosh();
+    },
+
+    handleBedroomDoor() {
+        showAtmosphericText('A door at the end. It feels different. More real. Less dream.', 3.0);
+        AudioEngine.playTick();
+
+        // Transition to bedroom after a moment
+        setTimeout(() => {
+            SceneManager.changeState(STATES.BEDROOM);
+        }, 2500);
+    },
+
+    update(dt) {
+        this.scrollProgress += dt;
+        Hotspots.update(Game.mouse.worldX, Game.mouse.worldY);
+
+        // Update atmospheric text timer
+        if (Game.gameState.atmosphericText) {
+            Game.gameState.atmosphericTextTimer += dt;
+            if (Game.gameState.atmosphericTextTimer >= Game.gameState.atmosphericTextDuration) {
+                Game.gameState.atmosphericText = null;
+            }
+        }
+    },
+
+    draw(ctx) {
+        // White corridor
+        ctx.fillStyle = '#f5f0e8';
+        ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+        // Floor (wooden)
+        ctx.fillStyle = '#d4c5a9';
+        ctx.fillRect(0, BASE_HEIGHT * 0.65, BASE_WIDTH, BASE_HEIGHT * 0.35);
+        for (let i = 0; i < 20; i++) {
+            ctx.fillStyle = i % 2 ? '#d0c0a0' : '#d8caa8';
+            ctx.fillRect(i * 64, BASE_HEIGHT * 0.65, 64, BASE_HEIGHT * 0.35);
+        }
+
+        // Perspective lines
+        ctx.strokeStyle = '#c0b0a0';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, BASE_HEIGHT * 0.65);
+        ctx.lineTo(BASE_WIDTH, BASE_HEIGHT * 0.65);
+        ctx.stroke();
+
+        // Doors on both sides (simple rectangles)
+        for (let i = 0; i < 6; i++) {
+            // Left doors
+            ctx.fillStyle = '#8c7a5e';
+            ctx.fillRect(20, 250 + i * 120, 80, 150);
+            ctx.strokeStyle = '#5a4a38';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(20, 250 + i * 120, 80, 150);
+
+            // Right doors
+            ctx.fillRect(BASE_WIDTH - 100, 250 + i * 120, 80, 150);
+            ctx.strokeRect(BASE_WIDTH - 100, 250 + i * 120, 80, 150);
+        }
+
+        // Portraits (gain features based on interactions)
+        for (let i = 0; i < 4; i++) {
+            const x = 100 + i * 280;
+            const y = 150;
+
+            // Frame
+            ctx.fillStyle = '#2a1810';
+            ctx.fillRect(x, y, 120, 180);
+            ctx.strokeStyle = '#4a3428';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(x, y, 120, 180);
+
+            // Portrait content (gets more detailed with portraitFeatures)
+            ctx.fillStyle = '#e8dcc0';
+            ctx.fillRect(x + 10, y + 10, 100, 160);
+
+            if (this.portraitFeatures > i) {
+                // Face appears
+                ctx.fillStyle = '#d4c5a9';
+                ctx.beginPath();
+                ctx.arc(x + 60, y + 80, 30, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (this.portraitFeatures > i + 1) {
+                    // Eyes appear
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.beginPath();
+                    ctx.arc(x + 50, y + 75, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(x + 70, y + 75, 3, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (this.portraitFeatures > i + 2) {
+                        // Mouth appears
+                        ctx.strokeStyle = '#1a1a1a';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(x + 60, y + 90, 10, 0, Math.PI);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        // Window at end showing Room 0
+        const winX = BASE_WIDTH - 280;
+        const winY = 200;
+        ctx.fillStyle = '#1a1410';
+        ctx.fillRect(winX, winY, 200, 200);
+        ctx.strokeStyle = '#4a3428';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(winX, winY, 200, 200);
+
+        // Vague silhouette of Room 0 in window
+        ctx.fillStyle = 'rgba(61, 50, 38, 0.3)';
+        ctx.fillRect(winX + 20, winY + 100, 160, 80);
+
+        // Door at end (to bedroom)
+        ctx.fillStyle = '#8c7a5e';
+        ctx.fillRect(BASE_WIDTH - 220, 300, 180, 350);
+        ctx.strokeStyle = '#5a4a38';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(BASE_WIDTH - 220, 300, 180, 350);
+
+        // Door panels
+        ctx.strokeStyle = '#4a3428';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(BASE_WIDTH - 210, 320, 70, 140);
+        ctx.strokeRect(BASE_WIDTH - 210, 480, 70, 140);
+        ctx.strokeRect(BASE_WIDTH - 130, 320, 70, 140);
+        ctx.strokeRect(BASE_WIDTH - 130, 480, 70, 140);
+
+        // Door handle
+        ctx.fillStyle = '#6b533e';
+        ctx.beginPath();
+        ctx.arc(BASE_WIDTH - 80, 470, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Subtle vignette
+        FX.drawVignette(ctx);
+
+        // Atmospheric text overlay
+        if (Game.gameState.atmosphericText) {
+            const fadeIn = 0.6;
+            const fadeOut = 0.8;
+            const timer = Game.gameState.atmosphericTextTimer;
+            const duration = Game.gameState.atmosphericTextDuration;
+
+            let alpha = 1;
+            if (timer < fadeIn) {
+                alpha = timer / fadeIn;
+            } else if (timer > duration - fadeOut) {
+                alpha = (duration - timer) / fadeOut;
+            }
+
+            ctx.save();
+            ctx.fillStyle = `rgba(61, 50, 38, ${alpha * 0.9})`;
+            ctx.font = 'italic 16px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+            ctx.shadowBlur = 4;
+            ctx.fillText(Game.gameState.atmosphericText, BASE_WIDTH / 2, BASE_HEIGHT - 80);
+            ctx.restore();
+        }
+    }
+};
+
+// --- SCENE: BEDROOM ---
+const SceneBedroom = {
+    clockPulse: 0,
+
+    enter() {
+        this.setupHotspots();
+        AudioEngine.startDrone();
+        this.clockPulse = 0;
+
+        // Show atmospheric text
+        setTimeout(() => {
+            showAtmosphericText('A bedroom. Normal. Too normal. The colors are wrong. The dream is fading.', 4.5);
+        }, 500);
+    },
+
+    exit() {
+        Hotspots.clear();
+    },
+
+    setupHotspots() {
+        Hotspots.clear();
+
+        // Bed
+        Hotspots.add('bed', 300, 400, 400, 250,
+            'Bed', () => this.handleBed());
+
+        // Bedside table with lamp
+        Hotspots.add('bedside-table', 750, 480, 120, 140,
+            'Lamp', () => this.handleLamp());
+
+        // Wardrobe
+        Hotspots.add('wardrobe', 100, 280, 180, 350,
+            'Wardrobe', () => this.handleWardrobe());
+
+        // Window with curtains
+        Hotspots.add('bedroom-window', 950, 150, 220, 240,
+            'Window', () => this.handleBedroomWindow());
+
+        // TV/black mirror
+        Hotspots.add('tv', 450, 80, 280, 180,
+            'Screen', () => this.handleTV());
+    },
+
+    handleBed() {
+        showAtmosphericText('The bed looks soft. Inviting. If you lie down, will you wake up? Or will you sleep deeper?', 4.5);
+        AudioEngine.playWhoosh();
+
+        // Lying down triggers return
+        setTimeout(() => {
+            this.returnToRoom();
+        }, 4000);
+    },
+
+    handleLamp() {
+        showAtmosphericText('A digital clock on the bedside table. It reads 3:33.', 2.5);
+        AudioEngine.playTick();
+    },
+
+    handleWardrobe() {
+        showAtmosphericText('A wardrobe. Closed. You don\'t want to see what clothes are inside.', 3.0);
+        AudioEngine.playTick();
+    },
+
+    handleBedroomWindow() {
+        showAtmosphericText('Bland curtains. Outside is... nothing. Just gray. The world hasn\'t loaded yet.', 3.5);
+        AudioEngine.playWhoosh();
+    },
+
+    handleTV() {
+        showAtmosphericText('A black screen. Your silhouette reflects back. Behind you, Room 0. Always Room 0.', 4.0);
+        AudioEngine.playTick();
+    },
+
+    returnToRoom() {
+        SceneEndingMirrorA.prototype.incrementLoop.call(this);
+        SceneManager.changeState(STATES.ROOM);
+    },
+
+    update(dt) {
+        this.clockPulse += dt;
+        Hotspots.update(Game.mouse.worldX, Game.mouse.worldY);
+
+        // Update atmospheric text timer
+        if (Game.gameState.atmosphericText) {
+            Game.gameState.atmosphericTextTimer += dt;
+            if (Game.gameState.atmosphericTextTimer >= Game.gameState.atmosphericTextDuration) {
+                Game.gameState.atmosphericText = null;
+            }
+        }
+    },
+
+    draw(ctx) {
+        // Less sepia, more natural bedroom colors
+        const bgGradient = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
+        bgGradient.addColorStop(0, '#8a9aa8');
+        bgGradient.addColorStop(0.65, '#7a8a98');
+        bgGradient.addColorStop(1, '#6a7a88');
+        ctx.fillStyle = bgGradient;
+        ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+        // Floor (carpet)
+        ctx.fillStyle = '#9a8a7a';
+        ctx.fillRect(0, BASE_HEIGHT * 0.7, BASE_WIDTH, BASE_HEIGHT * 0.3);
+
+        // Wardrobe
+        ctx.fillStyle = '#5a4a3a';
+        ctx.fillRect(100, 280, 180, 350);
+        ctx.strokeStyle = '#3a2a1a';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(100, 280, 180, 350);
+
+        // Wardrobe doors
+        ctx.strokeStyle = '#2a1a0a';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(110, 300, 75, 310);
+        ctx.strokeRect(195, 300, 75, 310);
+
+        // Window with curtains
+        ctx.fillStyle = '#c0c0c0';
+        ctx.fillRect(950, 150, 220, 240);
+        ctx.strokeStyle = '#4a3a2a';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(950, 150, 220, 240);
+
+        // Gray outside (nothing loaded)
+        ctx.fillStyle = '#888888';
+        ctx.fillRect(960, 160, 200, 220);
+
+        // Curtains (bland beige)
+        ctx.fillStyle = '#c8b8a8';
+        ctx.fillRect(940, 140, 40, 260);
+        ctx.fillRect(1180, 140, 40, 260);
+
+        // TV / Black mirror surface
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(450, 80, 280, 180);
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(450, 80, 280, 180);
+
+        // Vague reflection of Room 0 in TV
+        ctx.fillStyle = 'rgba(61, 50, 38, 0.15)';
+        ctx.fillRect(470, 100, 240, 140);
+
+        // Bed (large, inviting)
+        ctx.fillStyle = '#e8d8c8';
+        ctx.fillRect(300, 400, 400, 250);
+        ctx.fillStyle = '#d8c8b8';
+        ctx.fillRect(300, 400, 400, 80); // Pillow area
+
+        // Bed frame
+        ctx.fillStyle = '#5a4a3a';
+        ctx.fillRect(290, 630, 420, 20);
+
+        // Bedside table
+        ctx.fillStyle = '#5a4a3a';
+        ctx.fillRect(750, 480, 120, 140);
+
+        // Table legs
+        ctx.fillRect(760, 580, 12, 70);
+        ctx.fillRect(848, 580, 12, 70);
+
+        // Lamp on table
+        ctx.fillStyle = '#8a7a6a';
+        ctx.fillRect(785, 450, 50, 30);
+        ctx.fillStyle = '#ffeaa0';
+        ctx.beginPath();
+        ctx.arc(810, 440, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Digital clock on table (3:33)
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(770, 510, 80, 30);
+        ctx.fillStyle = `rgba(255, 50, 50, ${0.8 + Math.sin(this.clockPulse * 2) * 0.2})`;
+        ctx.font = 'bold 16px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('3:33', 810, 530);
+
+        // Lighter vignette
+        const gradient = ctx.createRadialGradient(
+            BASE_WIDTH / 2, BASE_HEIGHT / 2, BASE_HEIGHT * 0.3,
+            BASE_WIDTH / 2, BASE_HEIGHT / 2, BASE_HEIGHT * 0.8
+        );
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+        // Atmospheric text overlay
+        if (Game.gameState.atmosphericText) {
+            const fadeIn = 0.6;
+            const fadeOut = 0.8;
+            const timer = Game.gameState.atmosphericTextTimer;
+            const duration = Game.gameState.atmosphericTextDuration;
+
+            let alpha = 1;
+            if (timer < fadeIn) {
+                alpha = timer / fadeIn;
+            } else if (timer > duration - fadeOut) {
+                alpha = (duration - timer) / fadeOut;
+            }
+
+            ctx.save();
+            ctx.fillStyle = `rgba(40, 40, 40, ${alpha * 0.9})`;
+            ctx.font = 'italic 16px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+            ctx.shadowBlur = 4;
+            ctx.fillText(Game.gameState.atmosphericText, BASE_WIDTH / 2, BASE_HEIGHT - 80);
+            ctx.restore();
+        }
+    }
+};
+
 // --- ENDING SCENES ---
 const SceneEndingMirrorA = {
     timer: 0,
@@ -1388,15 +2406,14 @@ const SceneEndingMirrorA = {
                 Into another you, in another dream.<br><br>
                 <span style="font-size: 14px; opacity: 0.7;">Path ${endingNum} of ${totalNeeded} discovered</span>
             </div>
-            <button class="try-again-btn" id="ending-return">Wake</button>
+            <button class="try-again-btn" id="ending-return">Enter</button>
         `;
         document.getElementById('game-container').appendChild(this.endingOverlay);
 
         document.getElementById('ending-return').onclick = () => {
             this.endingOverlay.remove();
             this.endingOverlay = null;
-            this.incrementLoop();
-            SceneManager.changeState(STATES.ROOM);
+            SceneManager.changeState(STATES.MIRROR_WORLD);
         };
     },
 
@@ -1588,8 +2605,7 @@ const SceneEndingCatA = {
         document.getElementById('ending-return').onclick = () => {
             this.endingOverlay.remove();
             this.endingOverlay = null;
-            SceneEndingMirrorA.prototype.incrementLoop.call(this);
-            SceneManager.changeState(STATES.ROOM);
+            SceneManager.changeState(STATES.ATTIC);
         };
     },
 
@@ -1723,20 +2739,18 @@ const SceneEndingDoorA = {
         this.endingOverlay.innerHTML = `
             <div class="ending-caption">
                 You push through the door, eager for escape—<br><br>
-                Into another room.<br>
-                The same room.<br><br>
-                The clock still reads 3:33.<br><br>
+                Into another place.<br>
+                Familiar. Wrong.<br><br>
                 <span style="font-size: 14px; opacity: 0.7;">Path ${endingNum} of ${totalNeeded} discovered</span>
             </div>
-            <button class="try-again-btn" id="ending-return">Wake</button>
+            <button class="try-again-btn" id="ending-return">Continue</button>
         `;
         document.getElementById('game-container').appendChild(this.endingOverlay);
 
         document.getElementById('ending-return').onclick = () => {
             this.endingOverlay.remove();
             this.endingOverlay = null;
-            SceneEndingMirrorA.prototype.incrementLoop.call(this);
-            SceneManager.changeState(STATES.ROOM);
+            SceneManager.changeState(STATES.CORRIDOR);
         };
     },
 
@@ -1932,6 +2946,10 @@ const SceneManager = {
     scenes: {
         [STATES.INTRO]: SceneIntro,
         [STATES.ROOM]: SceneRoom,
+        [STATES.MIRROR_WORLD]: SceneMirrorWorld,
+        [STATES.ATTIC]: SceneAttic,
+        [STATES.CORRIDOR]: SceneCorridor,
+        [STATES.BEDROOM]: SceneBedroom,
         [STATES.ENDING_MIRROR_A]: SceneEndingMirrorA,
         [STATES.ENDING_MIRROR_B]: SceneEndingMirrorB,
         [STATES.ENDING_CAT_A]: SceneEndingCatA,
