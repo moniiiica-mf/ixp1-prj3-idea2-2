@@ -1361,18 +1361,18 @@ const SceneRoom = {
         Game.assets.table = Game.gameState.drawerOpen ? Game.assets.tableOpen : Game.assets.tableClosed;
         ctx.drawImage(Game.assets.table, LAYOUT.table.x, LAYOUT.table.y);
 
-        // Add subtle glow hint to drawer handle when closed
+        // Add subtle glow hint to drawer handle when closed (moved to right where handle is)
         if (!Game.gameState.drawerOpen) {
             const drawerHintAlpha = 0.15 + Math.sin(this.clockTick * 2) * 0.08;
             const glowGradient = ctx.createRadialGradient(
-                LAYOUT.table.x + 30, LAYOUT.table.y + 50, 0,
-                LAYOUT.table.x + 30, LAYOUT.table.y + 50, 15
+                LAYOUT.table.x + 70, LAYOUT.table.y + 40, 0,
+                LAYOUT.table.x + 70, LAYOUT.table.y + 40, 12
             );
             glowGradient.addColorStop(0, `rgba(212, 197, 169, ${drawerHintAlpha})`);
             glowGradient.addColorStop(1, 'rgba(212, 197, 169, 0)');
             ctx.fillStyle = glowGradient;
             ctx.beginPath();
-            ctx.arc(LAYOUT.table.x + 30, LAYOUT.table.y + 50, 15, 0, Math.PI * 2);
+            ctx.arc(LAYOUT.table.x + 70, LAYOUT.table.y + 40, 12, 0, Math.PI * 2);
             ctx.fill();
         }
 
@@ -1542,8 +1542,44 @@ const SceneMirrorWorld = {
     },
 
     returnToRoom() {
-        SceneEndingMirrorA.prototype.incrementLoop.call(this);
+        this.incrementLoop();
         SceneManager.changeState(STATES.ROOM);
+    },
+
+    incrementLoop() {
+        Game.gameState.loopCount++;
+        const [hours, minutes] = Game.gameState.clockTime.split(':').map(Number);
+        const newMinutes = minutes + 1;
+        Game.gameState.clockTime = `${hours}:${newMinutes.toString().padStart(2, '0')}`;
+        Game.assets.clock = Assets.generateClock(Game.gameState.clockTime);
+        this.resetRoomState();
+        this.checkFinalEnding();
+    },
+
+    resetRoomState() {
+        Game.gameState.mirrorCracked = true;
+        Game.gameState.mirrorRepaired = false;
+        Game.gameState.curtainPulled = false;
+        Game.gameState.drawerOpen = false;
+        Game.gameState.catAwake = false;
+        Game.gameState.catFed = false;
+        Game.gameState.bowlWarmed = false;
+        Game.gameState.doorLit = false;
+        Game.gameState.bloodDropped = false;
+        Game.gameState.atmosphericText = null;
+        Game.gameState.atmosphericTextTimer = 0;
+        Game.inventory.items = [];
+        Game.inventory.selectedItem = null;
+        Inventory.render();
+        Assets.load();
+    },
+
+    checkFinalEnding() {
+        if (Game.gameState.completedEndings.size >= 3) {
+            setTimeout(() => {
+                SceneManager.changeState(STATES.FINAL_ENDING);
+            }, 1000);
+        }
     },
 
     update(dt) {
@@ -1799,8 +1835,44 @@ const SceneAttic = {
     },
 
     returnToRoom() {
-        SceneEndingMirrorA.prototype.incrementLoop.call(this);
+        this.incrementLoop();
         SceneManager.changeState(STATES.ROOM);
+    },
+
+    incrementLoop() {
+        Game.gameState.loopCount++;
+        const [hours, minutes] = Game.gameState.clockTime.split(':').map(Number);
+        const newMinutes = minutes + 1;
+        Game.gameState.clockTime = `${hours}:${newMinutes.toString().padStart(2, '0')}`;
+        Game.assets.clock = Assets.generateClock(Game.gameState.clockTime);
+        this.resetRoomState();
+        this.checkFinalEnding();
+    },
+
+    resetRoomState() {
+        Game.gameState.mirrorCracked = true;
+        Game.gameState.mirrorRepaired = false;
+        Game.gameState.curtainPulled = false;
+        Game.gameState.drawerOpen = false;
+        Game.gameState.catAwake = false;
+        Game.gameState.catFed = false;
+        Game.gameState.bowlWarmed = false;
+        Game.gameState.doorLit = false;
+        Game.gameState.bloodDropped = false;
+        Game.gameState.atmosphericText = null;
+        Game.gameState.atmosphericTextTimer = 0;
+        Game.inventory.items = [];
+        Game.inventory.selectedItem = null;
+        Inventory.render();
+        Assets.load();
+    },
+
+    checkFinalEnding() {
+        if (Game.gameState.completedEndings.size >= 3) {
+            setTimeout(() => {
+                SceneManager.changeState(STATES.FINAL_ENDING);
+            }, 1000);
+        }
     },
 
     update(dt) {
@@ -2372,8 +2444,44 @@ const SceneBedroom = {
     },
 
     returnToRoom() {
-        SceneEndingMirrorA.prototype.incrementLoop.call(this);
+        this.incrementLoop();
         SceneManager.changeState(STATES.ROOM);
+    },
+
+    incrementLoop() {
+        Game.gameState.loopCount++;
+        const [hours, minutes] = Game.gameState.clockTime.split(':').map(Number);
+        const newMinutes = minutes + 1;
+        Game.gameState.clockTime = `${hours}:${newMinutes.toString().padStart(2, '0')}`;
+        Game.assets.clock = Assets.generateClock(Game.gameState.clockTime);
+        this.resetRoomState();
+        this.checkFinalEnding();
+    },
+
+    resetRoomState() {
+        Game.gameState.mirrorCracked = true;
+        Game.gameState.mirrorRepaired = false;
+        Game.gameState.curtainPulled = false;
+        Game.gameState.drawerOpen = false;
+        Game.gameState.catAwake = false;
+        Game.gameState.catFed = false;
+        Game.gameState.bowlWarmed = false;
+        Game.gameState.doorLit = false;
+        Game.gameState.bloodDropped = false;
+        Game.gameState.atmosphericText = null;
+        Game.gameState.atmosphericTextTimer = 0;
+        Game.inventory.items = [];
+        Game.inventory.selectedItem = null;
+        Inventory.render();
+        Assets.load();
+    },
+
+    checkFinalEnding() {
+        if (Game.gameState.completedEndings.size >= 3) {
+            setTimeout(() => {
+                SceneManager.changeState(STATES.FINAL_ENDING);
+            }, 1000);
+        }
     },
 
     update(dt) {
