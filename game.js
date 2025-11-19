@@ -92,8 +92,8 @@ function incrementLoopAndReturnToRoom() {
     // Regenerate assets to reset states
     Assets.load();
 
-    // Check for final ending
-    if (Game.gameState.completedEndings.size >= 3) {
+    // Check for final ending (all 6 paths must be completed)
+    if (Game.gameState.completedEndings.size >= 6) {
         setTimeout(() => {
             SceneManager.changeState(STATES.FINAL_ENDING);
         }, 1000);
@@ -2659,7 +2659,7 @@ const SceneEndingMirrorA = {
         this.endingOverlay = document.createElement('div');
         this.endingOverlay.className = 'ending-overlay';
         const endingNum = Game.gameState.completedEndings.size;
-        const totalNeeded = 3;
+        const totalNeeded = 6;
         this.endingOverlay.innerHTML = `
             <div class="ending-caption">
                 You press your palm to the glass and step through—<br><br>
@@ -2714,7 +2714,7 @@ const SceneEndingMirrorA = {
     },
 
     checkFinalEnding() {
-        if (Game.gameState.completedEndings.size >= 3) {
+        if (Game.gameState.completedEndings.size >= 6) {
             // All endings seen - trigger final
             setTimeout(() => {
                 SceneManager.changeState(STATES.FINAL_ENDING);
@@ -2758,7 +2758,7 @@ const SceneEndingMirrorB = {
         this.endingOverlay = document.createElement('div');
         this.endingOverlay.className = 'ending-overlay';
         const endingNum = Game.gameState.completedEndings.size;
-        const totalNeeded = 3;
+        const totalNeeded = 6;
         this.endingOverlay.innerHTML = `
             <div class="ending-caption">
                 You close your eyes before the mirror.<br><br>
@@ -2815,7 +2815,7 @@ const SceneEndingMirrorB = {
     },
 
     checkFinalEnding() {
-        if (Game.gameState.completedEndings.size >= 3) {
+        if (Game.gameState.completedEndings.size >= 6) {
             // All endings seen - trigger final
             setTimeout(() => {
                 SceneManager.changeState(STATES.FINAL_ENDING);
@@ -2894,7 +2894,7 @@ const SceneEndingCatA = {
         this.endingOverlay = document.createElement('div');
         this.endingOverlay.className = 'ending-overlay';
         const endingNum = Game.gameState.completedEndings.size;
-        const totalNeeded = 3;
+        const totalNeeded = 6;
         this.endingOverlay.innerHTML = `
             <div class="ending-caption">
                 Three glowing eyes lock onto yours.<br><br>
@@ -2958,7 +2958,7 @@ const SceneEndingCatB = {
         this.endingOverlay = document.createElement('div');
         this.endingOverlay.className = 'ending-overlay';
         const endingNum = Game.gameState.completedEndings.size;
-        const totalNeeded = 3;
+        const totalNeeded = 6;
         this.endingOverlay.innerHTML = `
             <div class="ending-caption">
                 You offer the flame. The cat's three eyes soften.<br><br>
@@ -3016,7 +3016,7 @@ const SceneEndingCatB = {
     },
 
     checkFinalEnding() {
-        if (Game.gameState.completedEndings.size >= 3) {
+        if (Game.gameState.completedEndings.size >= 6) {
             // All endings seen - trigger final
             setTimeout(() => {
                 SceneManager.changeState(STATES.FINAL_ENDING);
@@ -3085,7 +3085,7 @@ const SceneEndingDoorA = {
         this.endingOverlay = document.createElement('div');
         this.endingOverlay.className = 'ending-overlay';
         const endingNum = Game.gameState.completedEndings.size;
-        const totalNeeded = 3;
+        const totalNeeded = 6;
         this.endingOverlay.innerHTML = `
             <div class="ending-caption">
                 You push through the door, eager for escape—<br><br>
@@ -3176,7 +3176,7 @@ const SceneEndingDoorB = {
         this.endingOverlay = document.createElement('div');
         this.endingOverlay.className = 'ending-overlay';
         const endingNum = Game.gameState.completedEndings.size;
-        const totalNeeded = 3;
+        const totalNeeded = 6;
         this.endingOverlay.innerHTML = `
             <div class="ending-caption">
                 You wait at the door.<br>
@@ -3243,9 +3243,9 @@ const SceneFinalEnding = {
         this.endingOverlay.className = 'ending-overlay';
         this.endingOverlay.innerHTML = `
             <div class="ending-caption" style="font-size: 18px; line-height: 2;">
-                Three paths walked.<br>
+                Three paths. Six ways to walk them.<br>
                 Mirror. Cat. Door.<br><br>
-                Each one brought you back to 3:33.<br>
+                Each brought you back to 3:33.<br>
                 Each awakening another layer of sleep.<br><br>
                 But now you understand—<br><br>
                 The room wasn't trapping you.<br>
