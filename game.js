@@ -2147,15 +2147,15 @@ const SceneCorridor = {
 
         // Portraits (2 on left, 2 on right)
         // Left portraits
-        Hotspots.add('portrait-0', 80, 190, 120, 160,
+        Hotspots.add('portrait-0', 80, 185, 120, 150,
             'Portrait', () => this.handlePortrait(0));
-        Hotspots.add('portrait-1', 260, 190, 120, 160,
+        Hotspots.add('portrait-1', 260, 185, 120, 150,
             'Portrait', () => this.handlePortrait(1));
 
         // Right portraits
-        Hotspots.add('portrait-2', 900, 190, 120, 160,
+        Hotspots.add('portrait-2', 900, 185, 120, 150,
             'Portrait', () => this.handlePortrait(2));
-        Hotspots.add('portrait-3', 1080, 190, 120, 160,
+        Hotspots.add('portrait-3', 1080, 185, 120, 150,
             'Portrait', () => this.handlePortrait(3));
 
         // Window (on top)
@@ -2163,7 +2163,7 @@ const SceneCorridor = {
             'Window', () => this.handleWindow());
 
         // Door to bedroom (centered, below portraits and window)
-        Hotspots.add('bedroom-door', (BASE_WIDTH / 2) - 90, 310, 180, 340,
+        Hotspots.add('bedroom-door', (BASE_WIDTH / 2) - 90, 350, 180, 320,
             'Door', () => this.handleBedroomDoor());
     },
 
@@ -2249,18 +2249,18 @@ const SceneCorridor = {
         const portraitPositions = [80, 260, 900, 1080];
         for (let i = 0; i < 4; i++) {
             const x = portraitPositions[i];
-            const y = 190;
+            const y = 185;
 
             // Frame
             ctx.fillStyle = '#2a1810';
-            ctx.fillRect(x, y, 120, 160);
+            ctx.fillRect(x, y, 120, 150);
             ctx.strokeStyle = '#4a3428';
             ctx.lineWidth = 6;
-            ctx.strokeRect(x, y, 120, 160);
+            ctx.strokeRect(x, y, 120, 150);
 
             // Portrait content (gets more detailed with portraitFeatures)
             ctx.fillStyle = '#e8dcc0';
-            ctx.fillRect(x + 10, y + 10, 100, 140);
+            ctx.fillRect(x + 10, y + 10, 100, 130);
 
             if (this.portraitFeatures > i) {
                 // Face appears
@@ -2307,23 +2307,23 @@ const SceneCorridor = {
         // Door (centered, below portraits and window)
         const doorX = (BASE_WIDTH / 2) - 90;
         ctx.fillStyle = '#8c7a5e';
-        ctx.fillRect(doorX, 310, 180, 340);
+        ctx.fillRect(doorX, 350, 180, 320);
         ctx.strokeStyle = '#5a4a38';
         ctx.lineWidth = 4;
-        ctx.strokeRect(doorX, 310, 180, 340);
+        ctx.strokeRect(doorX, 350, 180, 320);
 
         // Door panels
         ctx.strokeStyle = '#4a3428';
         ctx.lineWidth = 2;
-        ctx.strokeRect(doorX + 10, 330, 70, 140);
-        ctx.strokeRect(doorX + 10, 490, 70, 140);
-        ctx.strokeRect(doorX + 105, 330, 70, 140);
-        ctx.strokeRect(doorX + 105, 490, 70, 140);
+        ctx.strokeRect(doorX + 10, 370, 70, 130);
+        ctx.strokeRect(doorX + 10, 520, 70, 130);
+        ctx.strokeRect(doorX + 105, 370, 70, 130);
+        ctx.strokeRect(doorX + 105, 520, 70, 130);
 
         // Door handle
         ctx.fillStyle = '#6b533e';
         ctx.beginPath();
-        ctx.arc(doorX + 140, 485, 6, 0, Math.PI * 2);
+        ctx.arc(doorX + 140, 515, 6, 0, Math.PI * 2);
         ctx.fill();
 
         // Subtle vignette
