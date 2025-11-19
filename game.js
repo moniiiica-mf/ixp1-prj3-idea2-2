@@ -60,6 +60,49 @@ function showAtmosphericText(text, duration = 3.0) {
     Game.gameState.atmosphericTextDuration = duration;
 }
 
+// Loop increment helper - used when pulling back to Room 0 from exploration scenes
+function incrementLoopAndReturnToRoom() {
+    // Increment loop count
+    Game.gameState.loopCount++;
+
+    // Update clock time
+    const [hours, minutes] = Game.gameState.clockTime.split(':').map(Number);
+    const newMinutes = minutes + 1;
+    Game.gameState.clockTime = `${hours}:${newMinutes.toString().padStart(2, '0')}`;
+    Game.assets.clock = Assets.generateClock(Game.gameState.clockTime);
+
+    // Reset room state for new loop
+    Game.gameState.mirrorCracked = true;
+    Game.gameState.mirrorRepaired = false;
+    Game.gameState.curtainPulled = false;
+    Game.gameState.drawerOpen = false;
+    Game.gameState.catAwake = false;
+    Game.gameState.catFed = false;
+    Game.gameState.bowlWarmed = false;
+    Game.gameState.doorLit = false;
+    Game.gameState.bloodDropped = false;
+    Game.gameState.atmosphericText = null;
+    Game.gameState.atmosphericTextTimer = 0;
+
+    // Clear inventory
+    Game.inventory.items = [];
+    Game.inventory.selectedItem = null;
+    Inventory.render();
+
+    // Regenerate assets to reset states
+    Assets.load();
+
+    // Check for final ending
+    if (Game.gameState.completedEndings.size >= 3) {
+        setTimeout(() => {
+            SceneManager.changeState(STATES.FINAL_ENDING);
+        }, 1000);
+    } else {
+        // Return to Room 0
+        SceneManager.changeState(STATES.ROOM);
+    }
+}
+
 // --- GLOBAL GAME OBJECT ---
 const Game = {
     canvas: null,
@@ -1361,18 +1404,18 @@ const SceneRoom = {
         Game.assets.table = Game.gameState.drawerOpen ? Game.assets.tableOpen : Game.assets.tableClosed;
         ctx.drawImage(Game.assets.table, LAYOUT.table.x, LAYOUT.table.y);
 
-        // Add subtle glow hint to drawer handle when closed (moved to right where handle is)
+        // Add subtle glow hint to drawer handle when closed
         if (!Game.gameState.drawerOpen) {
             const drawerHintAlpha = 0.15 + Math.sin(this.clockTick * 2) * 0.08;
             const glowGradient = ctx.createRadialGradient(
-                LAYOUT.table.x + 70, LAYOUT.table.y + 40, 0,
-                LAYOUT.table.x + 70, LAYOUT.table.y + 40, 12
+                LAYOUT.table.x + 150, LAYOUT.table.y + 50, 0,
+                LAYOUT.table.x + 150, LAYOUT.table.y + 50, 15
             );
             glowGradient.addColorStop(0, `rgba(212, 197, 169, ${drawerHintAlpha})`);
             glowGradient.addColorStop(1, 'rgba(212, 197, 169, 0)');
             ctx.fillStyle = glowGradient;
             ctx.beginPath();
-            ctx.arc(LAYOUT.table.x + 70, LAYOUT.table.y + 40, 12, 0, Math.PI * 2);
+            ctx.arc(LAYOUT.table.x + 150, LAYOUT.table.y + 50, 15, 0, Math.PI * 2);
             ctx.fill();
         }
 
@@ -1474,6 +1517,7 @@ const SceneMirrorWorld = {
     mirrorOutlineGlow: 0,
     flashingBack: false,
     flashTimer: 0,
+    returnTimeout: null,
 
     enter() {
         this.setupHotspots();
@@ -1482,6 +1526,10 @@ const SceneMirrorWorld = {
         this.mirrorOutlineGlow = 0;
         this.flashingBack = false;
         this.flashTimer = 0;
+        if (this.returnTimeout) {
+            clearTimeout(this.returnTimeout);
+            this.returnTimeout = null;
+        }
 
         // Show atmospheric text
         setTimeout(() => {
@@ -1491,6 +1539,10 @@ const SceneMirrorWorld = {
 
     exit() {
         Hotspots.clear();
+        if (this.returnTimeout) {
+            clearTimeout(this.returnTimeout);
+            this.returnTimeout = null;
+        }
     },
 
     setupHotspots() {
@@ -1525,9 +1577,11 @@ const SceneMirrorWorld = {
 
         // Flash after 1 second to hint, then pull back after 3 seconds total
         this.flashingBack = true;
-        const self = this;
-        setTimeout(function() {
-            self.returnToRoom();
+        if (this.returnTimeout) {
+            clearTimeout(this.returnTimeout);
+        }
+        this.returnTimeout = setTimeout(() => {
+            this.returnToRoom();
         }, 3000);
     },
 
@@ -1542,44 +1596,7 @@ const SceneMirrorWorld = {
     },
 
     returnToRoom() {
-        this.incrementLoop();
-        SceneManager.changeState(STATES.ROOM);
-    },
-
-    incrementLoop() {
-        Game.gameState.loopCount++;
-        const [hours, minutes] = Game.gameState.clockTime.split(':').map(Number);
-        const newMinutes = minutes + 1;
-        Game.gameState.clockTime = `${hours}:${newMinutes.toString().padStart(2, '0')}`;
-        Game.assets.clock = Assets.generateClock(Game.gameState.clockTime);
-        this.resetRoomState();
-        this.checkFinalEnding();
-    },
-
-    resetRoomState() {
-        Game.gameState.mirrorCracked = true;
-        Game.gameState.mirrorRepaired = false;
-        Game.gameState.curtainPulled = false;
-        Game.gameState.drawerOpen = false;
-        Game.gameState.catAwake = false;
-        Game.gameState.catFed = false;
-        Game.gameState.bowlWarmed = false;
-        Game.gameState.doorLit = false;
-        Game.gameState.bloodDropped = false;
-        Game.gameState.atmosphericText = null;
-        Game.gameState.atmosphericTextTimer = 0;
-        Game.inventory.items = [];
-        Game.inventory.selectedItem = null;
-        Inventory.render();
-        Assets.load();
-    },
-
-    checkFinalEnding() {
-        if (Game.gameState.completedEndings.size >= 3) {
-            setTimeout(() => {
-                SceneManager.changeState(STATES.FINAL_ENDING);
-            }, 1000);
-        }
+        incrementLoopAndReturnToRoom();
     },
 
     update(dt) {
@@ -1758,6 +1775,7 @@ const SceneAttic = {
     moonPulse: 0,
     flashingBack: false,
     flashTimer: 0,
+    returnTimeout: null,
 
     enter() {
         this.setupHotspots();
@@ -1767,6 +1785,10 @@ const SceneAttic = {
         this.moonPulse = 0;
         this.flashingBack = false;
         this.flashTimer = 0;
+        if (this.returnTimeout) {
+            clearTimeout(this.returnTimeout);
+            this.returnTimeout = null;
+        }
 
         // Show atmospheric text
         setTimeout(() => {
@@ -1776,6 +1798,10 @@ const SceneAttic = {
 
     exit() {
         Hotspots.clear();
+        if (this.returnTimeout) {
+            clearTimeout(this.returnTimeout);
+            this.returnTimeout = null;
+        }
     },
 
     setupHotspots() {
@@ -1823,9 +1849,11 @@ const SceneAttic = {
 
         // Flash after 1 second to hint, then pull back after 4 seconds total
         this.flashingBack = true;
-        const self = this;
-        setTimeout(function() {
-            self.returnToRoom();
+        if (this.returnTimeout) {
+            clearTimeout(this.returnTimeout);
+        }
+        this.returnTimeout = setTimeout(() => {
+            this.returnToRoom();
         }, 4000);
     },
 
@@ -1835,44 +1863,7 @@ const SceneAttic = {
     },
 
     returnToRoom() {
-        this.incrementLoop();
-        SceneManager.changeState(STATES.ROOM);
-    },
-
-    incrementLoop() {
-        Game.gameState.loopCount++;
-        const [hours, minutes] = Game.gameState.clockTime.split(':').map(Number);
-        const newMinutes = minutes + 1;
-        Game.gameState.clockTime = `${hours}:${newMinutes.toString().padStart(2, '0')}`;
-        Game.assets.clock = Assets.generateClock(Game.gameState.clockTime);
-        this.resetRoomState();
-        this.checkFinalEnding();
-    },
-
-    resetRoomState() {
-        Game.gameState.mirrorCracked = true;
-        Game.gameState.mirrorRepaired = false;
-        Game.gameState.curtainPulled = false;
-        Game.gameState.drawerOpen = false;
-        Game.gameState.catAwake = false;
-        Game.gameState.catFed = false;
-        Game.gameState.bowlWarmed = false;
-        Game.gameState.doorLit = false;
-        Game.gameState.bloodDropped = false;
-        Game.gameState.atmosphericText = null;
-        Game.gameState.atmosphericTextTimer = 0;
-        Game.inventory.items = [];
-        Game.inventory.selectedItem = null;
-        Inventory.render();
-        Assets.load();
-    },
-
-    checkFinalEnding() {
-        if (Game.gameState.completedEndings.size >= 3) {
-            setTimeout(() => {
-                SceneManager.changeState(STATES.FINAL_ENDING);
-            }, 1000);
-        }
+        incrementLoopAndReturnToRoom();
     },
 
     update(dt) {
@@ -2156,23 +2147,23 @@ const SceneCorridor = {
 
         // Portraits (2 on left, 2 on right)
         // Left portraits
-        Hotspots.add('portrait-0', 80, 180, 120, 180,
+        Hotspots.add('portrait-0', 80, 190, 120, 160,
             'Portrait', () => this.handlePortrait(0));
-        Hotspots.add('portrait-1', 260, 180, 120, 180,
+        Hotspots.add('portrait-1', 260, 190, 120, 160,
             'Portrait', () => this.handlePortrait(1));
 
         // Right portraits
-        Hotspots.add('portrait-2', 900, 180, 120, 180,
+        Hotspots.add('portrait-2', 900, 190, 120, 160,
             'Portrait', () => this.handlePortrait(2));
-        Hotspots.add('portrait-3', 1080, 180, 120, 180,
+        Hotspots.add('portrait-3', 1080, 190, 120, 160,
             'Portrait', () => this.handlePortrait(3));
 
-        // Window (on top of door)
-        Hotspots.add('corridor-window', (BASE_WIDTH / 2) - 100, 80, 200, 140,
+        // Window (on top)
+        Hotspots.add('corridor-window', (BASE_WIDTH / 2) - 100, 60, 200, 120,
             'Window', () => this.handleWindow());
 
-        // Door to bedroom (centered, below window)
-        Hotspots.add('bedroom-door', (BASE_WIDTH / 2) - 90, 320, 180, 330,
+        // Door to bedroom (centered, below portraits and window)
+        Hotspots.add('bedroom-door', (BASE_WIDTH / 2) - 90, 310, 180, 340,
             'Door', () => this.handleBedroomDoor());
     },
 
@@ -2258,18 +2249,18 @@ const SceneCorridor = {
         const portraitPositions = [80, 260, 900, 1080];
         for (let i = 0; i < 4; i++) {
             const x = portraitPositions[i];
-            const y = 180;
+            const y = 190;
 
             // Frame
             ctx.fillStyle = '#2a1810';
-            ctx.fillRect(x, y, 120, 180);
+            ctx.fillRect(x, y, 120, 160);
             ctx.strokeStyle = '#4a3428';
             ctx.lineWidth = 6;
-            ctx.strokeRect(x, y, 120, 180);
+            ctx.strokeRect(x, y, 120, 160);
 
             // Portrait content (gets more detailed with portraitFeatures)
             ctx.fillStyle = '#e8dcc0';
-            ctx.fillRect(x + 10, y + 10, 100, 160);
+            ctx.fillRect(x + 10, y + 10, 100, 140);
 
             if (this.portraitFeatures > i) {
                 // Face appears
@@ -2300,34 +2291,34 @@ const SceneCorridor = {
             }
         }
 
-        // Window (on top of door, centered)
+        // Window (on top, centered)
         const winX = (BASE_WIDTH / 2) - 100;
-        const winY = 80;
+        const winY = 60;
         ctx.fillStyle = '#1a1410';
-        ctx.fillRect(winX, winY, 200, 140);
+        ctx.fillRect(winX, winY, 200, 120);
         ctx.strokeStyle = '#4a3428';
         ctx.lineWidth = 8;
-        ctx.strokeRect(winX, winY, 200, 140);
+        ctx.strokeRect(winX, winY, 200, 120);
 
         // Vague silhouette of Room 0 in window
         ctx.fillStyle = 'rgba(61, 50, 38, 0.3)';
-        ctx.fillRect(winX + 20, winY + 60, 160, 60);
+        ctx.fillRect(winX + 20, winY + 40, 160, 60);
 
-        // Door (centered, below window)
+        // Door (centered, below portraits and window)
         const doorX = (BASE_WIDTH / 2) - 90;
         ctx.fillStyle = '#8c7a5e';
-        ctx.fillRect(doorX, 320, 180, 330);
+        ctx.fillRect(doorX, 310, 180, 340);
         ctx.strokeStyle = '#5a4a38';
         ctx.lineWidth = 4;
-        ctx.strokeRect(doorX, 320, 180, 330);
+        ctx.strokeRect(doorX, 310, 180, 340);
 
         // Door panels
         ctx.strokeStyle = '#4a3428';
         ctx.lineWidth = 2;
-        ctx.strokeRect(doorX + 10, 340, 70, 130);
-        ctx.strokeRect(doorX + 10, 490, 70, 130);
-        ctx.strokeRect(doorX + 105, 340, 70, 130);
-        ctx.strokeRect(doorX + 105, 490, 70, 130);
+        ctx.strokeRect(doorX + 10, 330, 70, 140);
+        ctx.strokeRect(doorX + 10, 490, 70, 140);
+        ctx.strokeRect(doorX + 105, 330, 70, 140);
+        ctx.strokeRect(doorX + 105, 490, 70, 140);
 
         // Door handle
         ctx.fillStyle = '#6b533e';
@@ -2369,6 +2360,7 @@ const SceneBedroom = {
     clockPulse: 0,
     flashingBack: false,
     flashTimer: 0,
+    returnTimeout: null,
 
     enter() {
         this.setupHotspots();
@@ -2376,6 +2368,10 @@ const SceneBedroom = {
         this.clockPulse = 0;
         this.flashingBack = false;
         this.flashTimer = 0;
+        if (this.returnTimeout) {
+            clearTimeout(this.returnTimeout);
+            this.returnTimeout = null;
+        }
 
         // Show atmospheric text
         setTimeout(() => {
@@ -2385,21 +2381,25 @@ const SceneBedroom = {
 
     exit() {
         Hotspots.clear();
+        if (this.returnTimeout) {
+            clearTimeout(this.returnTimeout);
+            this.returnTimeout = null;
+        }
     },
 
     setupHotspots() {
         Hotspots.clear();
 
         // Bed (moved higher to not cover subtitles)
-        Hotspots.add('bed', 300, 350, 400, 250,
+        Hotspots.add('bed', 300, 300, 400, 250,
             'Bed', () => this.handleBed());
 
         // Bedside table with lamp (moved higher)
-        Hotspots.add('bedside-table', 750, 420, 120, 140,
+        Hotspots.add('bedside-table', 750, 370, 120, 140,
             'Lamp', () => this.handleLamp());
 
         // Wardrobe (moved higher to same height as bed)
-        Hotspots.add('wardrobe', 100, 350, 180, 230,
+        Hotspots.add('wardrobe', 100, 300, 180, 230,
             'Wardrobe', () => this.handleWardrobe());
 
         // Window with curtains
@@ -2417,9 +2417,11 @@ const SceneBedroom = {
 
         // Flash after 1 second to hint, then pull back after 4 seconds total
         this.flashingBack = true;
-        const self = this;
-        setTimeout(function() {
-            self.returnToRoom();
+        if (this.returnTimeout) {
+            clearTimeout(this.returnTimeout);
+        }
+        this.returnTimeout = setTimeout(() => {
+            this.returnToRoom();
         }, 4000);
     },
 
@@ -2444,44 +2446,7 @@ const SceneBedroom = {
     },
 
     returnToRoom() {
-        this.incrementLoop();
-        SceneManager.changeState(STATES.ROOM);
-    },
-
-    incrementLoop() {
-        Game.gameState.loopCount++;
-        const [hours, minutes] = Game.gameState.clockTime.split(':').map(Number);
-        const newMinutes = minutes + 1;
-        Game.gameState.clockTime = `${hours}:${newMinutes.toString().padStart(2, '0')}`;
-        Game.assets.clock = Assets.generateClock(Game.gameState.clockTime);
-        this.resetRoomState();
-        this.checkFinalEnding();
-    },
-
-    resetRoomState() {
-        Game.gameState.mirrorCracked = true;
-        Game.gameState.mirrorRepaired = false;
-        Game.gameState.curtainPulled = false;
-        Game.gameState.drawerOpen = false;
-        Game.gameState.catAwake = false;
-        Game.gameState.catFed = false;
-        Game.gameState.bowlWarmed = false;
-        Game.gameState.doorLit = false;
-        Game.gameState.bloodDropped = false;
-        Game.gameState.atmosphericText = null;
-        Game.gameState.atmosphericTextTimer = 0;
-        Game.inventory.items = [];
-        Game.inventory.selectedItem = null;
-        Inventory.render();
-        Assets.load();
-    },
-
-    checkFinalEnding() {
-        if (Game.gameState.completedEndings.size >= 3) {
-            setTimeout(() => {
-                SceneManager.changeState(STATES.FINAL_ENDING);
-            }, 1000);
-        }
+        incrementLoopAndReturnToRoom();
     },
 
     update(dt) {
@@ -2517,16 +2482,16 @@ const SceneBedroom = {
 
         // Wardrobe (at same height as bed to not cover subtitles)
         ctx.fillStyle = '#5a4a3a';
-        ctx.fillRect(100, 350, 180, 230);
+        ctx.fillRect(100, 300, 180, 230);
         ctx.strokeStyle = '#3a2a1a';
         ctx.lineWidth = 4;
-        ctx.strokeRect(100, 350, 180, 230);
+        ctx.strokeRect(100, 300, 180, 230);
 
         // Wardrobe doors
         ctx.strokeStyle = '#2a1a0a';
         ctx.lineWidth = 2;
-        ctx.strokeRect(110, 365, 75, 200);
-        ctx.strokeRect(195, 365, 75, 200);
+        ctx.strokeRect(110, 315, 75, 200);
+        ctx.strokeRect(195, 315, 75, 200);
 
         // Window with curtains
         ctx.fillStyle = '#c0c0c0';
@@ -2557,48 +2522,48 @@ const SceneBedroom = {
 
         // Bed (large, inviting) - moved higher to not cover subtitles
         ctx.fillStyle = '#e8d8c8';
-        ctx.fillRect(300, 350, 400, 250);
+        ctx.fillRect(300, 300, 400, 250);
         ctx.fillStyle = '#d8c8b8';
-        ctx.fillRect(300, 350, 400, 80); // Pillow area
+        ctx.fillRect(300, 300, 400, 80); // Pillow area
 
         // Bed frame
         ctx.fillStyle = '#5a4a3a';
-        ctx.fillRect(290, 580, 420, 20);
+        ctx.fillRect(290, 530, 420, 20);
 
         // Add flash effect to bed when pulling back (after 1 second)
         if (this.flashingBack && this.flashTimer > 1.0) {
             ctx.strokeStyle = `rgba(232, 216, 200, ${Math.sin((this.flashTimer - 1.0) * 8) * 0.4 + 0.3})`;
             ctx.lineWidth = 4 + Math.sin((this.flashTimer - 1.0) * 8) * 2;
-            ctx.strokeRect(300, 350, 400, 250);
+            ctx.strokeRect(300, 300, 400, 250);
 
             // Add inner glow
             ctx.fillStyle = `rgba(232, 216, 200, ${Math.sin((this.flashTimer - 1.0) * 8) * 0.1 + 0.05})`;
-            ctx.fillRect(300, 350, 400, 250);
+            ctx.fillRect(300, 300, 400, 250);
         }
 
         // Bedside table (at same height as bed to not cover subtitles)
         ctx.fillStyle = '#5a4a3a';
-        ctx.fillRect(750, 420, 120, 140);
+        ctx.fillRect(750, 370, 120, 140);
 
         // Table legs
-        ctx.fillRect(760, 540, 12, 60);
-        ctx.fillRect(848, 540, 12, 60);
+        ctx.fillRect(760, 490, 12, 60);
+        ctx.fillRect(848, 490, 12, 60);
 
         // Lamp on table
         ctx.fillStyle = '#8a7a6a';
-        ctx.fillRect(785, 390, 50, 30);
+        ctx.fillRect(785, 340, 50, 30);
         ctx.fillStyle = '#ffeaa0';
         ctx.beginPath();
-        ctx.arc(810, 380, 12, 0, Math.PI * 2);
+        ctx.arc(810, 330, 12, 0, Math.PI * 2);
         ctx.fill();
 
         // Digital clock on table (3:33)
         ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(770, 450, 80, 30);
+        ctx.fillRect(770, 400, 80, 30);
         ctx.fillStyle = `rgba(255, 50, 50, ${0.8 + Math.sin(this.clockPulse * 2) * 0.2})`;
         ctx.font = 'bold 16px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('3:33', 810, 470);
+        ctx.fillText('3:33', 810, 420);
 
         // Lighter vignette
         const gradient = ctx.createRadialGradient(
