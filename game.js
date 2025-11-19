@@ -1365,14 +1365,14 @@ const SceneRoom = {
         if (!Game.gameState.drawerOpen) {
             const drawerHintAlpha = 0.15 + Math.sin(this.clockTick * 2) * 0.08;
             const glowGradient = ctx.createRadialGradient(
-                LAYOUT.table.x + 30, LAYOUT.table.y + 50, 0,
-                LAYOUT.table.x + 30, LAYOUT.table.y + 50, 15
+                LAYOUT.table.x + 150, LAYOUT.table.y + 50, 0,
+                LAYOUT.table.x + 150, LAYOUT.table.y + 50, 15
             );
             glowGradient.addColorStop(0, `rgba(212, 197, 169, ${drawerHintAlpha})`);
             glowGradient.addColorStop(1, 'rgba(212, 197, 169, 0)');
             ctx.fillStyle = glowGradient;
             ctx.beginPath();
-            ctx.arc(LAYOUT.table.x + 30, LAYOUT.table.y + 50, 15, 0, Math.PI * 2);
+            ctx.arc(LAYOUT.table.x + 150, LAYOUT.table.y + 50, 15, 0, Math.PI * 2);
             ctx.fill();
         }
 
