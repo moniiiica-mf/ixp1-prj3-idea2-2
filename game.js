@@ -1361,12 +1361,19 @@ const SceneRoom = {
         Game.assets.table = Game.gameState.drawerOpen ? Game.assets.tableOpen : Game.assets.tableClosed;
         ctx.drawImage(Game.assets.table, LAYOUT.table.x, LAYOUT.table.y);
 
-        // Add subtle pulsing hint to drawer when closed
+        // Add subtle glow hint to drawer handle when closed
         if (!Game.gameState.drawerOpen) {
-            const drawerHintAlpha = 0.1 + Math.sin(this.clockTick * 2) * 0.05;
-            ctx.strokeStyle = `rgba(212, 197, 169, ${drawerHintAlpha})`;
-            ctx.lineWidth = 2;
-            ctx.strokeRect(LAYOUT.table.x + 15, LAYOUT.table.y + 20, 50, 40);
+            const drawerHintAlpha = 0.15 + Math.sin(this.clockTick * 2) * 0.08;
+            const glowGradient = ctx.createRadialGradient(
+                LAYOUT.table.x + 30, LAYOUT.table.y + 50, 0,
+                LAYOUT.table.x + 30, LAYOUT.table.y + 50, 15
+            );
+            glowGradient.addColorStop(0, `rgba(212, 197, 169, ${drawerHintAlpha})`);
+            glowGradient.addColorStop(1, 'rgba(212, 197, 169, 0)');
+            ctx.fillStyle = glowGradient;
+            ctx.beginPath();
+            ctx.arc(LAYOUT.table.x + 30, LAYOUT.table.y + 50, 15, 0, Math.PI * 2);
+            ctx.fill();
         }
 
         // Bowl (right)
