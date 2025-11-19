@@ -1058,7 +1058,7 @@ const SceneRoom = {
 
         // Mirror (press & hold to "press palm")
         Hotspots.add('mirror', LAYOUT.mirror.x, LAYOUT.mirror.y, LAYOUT.mirror.w, LAYOUT.mirror.h,
-            Game.gameState.mirrorRepaired ? 'Touch' : (Game.gameState.curtainPulled ? 'Inspect' : '(Covered)'),
+            Game.gameState.mirrorRepaired ? 'Touch (hold to press palm)' : (Game.gameState.curtainPulled ? 'Inspect' : '(Covered)'),
             () => this.handleMirror(),
             true
         );
@@ -1415,12 +1415,16 @@ const SceneRoom = {
 const SceneMirrorWorld = {
     doorLightPulse: 0,
     mirrorOutlineGlow: 0,
+    flashingBack: false,
+    flashTimer: 0,
 
     enter() {
         this.setupHotspots();
         AudioEngine.startDrone();
         this.doorLightPulse = 0;
         this.mirrorOutlineGlow = 0;
+        this.flashingBack = false;
+        this.flashTimer = 0;
 
         // Show atmospheric text
         setTimeout(() => {
@@ -1440,15 +1444,9 @@ const SceneMirrorWorld = {
         Hotspots.add('curtain-mirror', curtainX, LAYOUT.curtain.y, LAYOUT.curtain.w, LAYOUT.curtain.h,
             'Curtain', () => this.handleCurtainMirror());
 
-        // Invisible mirror outline that can pull player back
-        const mirrorX = BASE_WIDTH - LAYOUT.mirror.x - LAYOUT.mirror.w;
-        Hotspots.add('mirror-outline', mirrorX, LAYOUT.mirror.y, LAYOUT.mirror.w, LAYOUT.mirror.h,
+        // Invisible mirror outline on LEFT side (same position as Room 0, but in flipped world)
+        Hotspots.add('mirror-outline', LAYOUT.mirror.x, LAYOUT.mirror.y, LAYOUT.mirror.w, LAYOUT.mirror.h,
             'Something familiar...', () => this.handleMirrorOutline());
-
-        // Three eye-shaped stains where cat was
-        const catX = BASE_WIDTH - LAYOUT.cat.x - LAYOUT.cat.w;
-        Hotspots.add('eye-stains', catX, LAYOUT.cat.y, LAYOUT.cat.w, LAYOUT.cat.h,
-            'Stains', () => this.handleEyeStains());
 
         // Door (light on opposite side)
         Hotspots.add('door-mirror', LAYOUT.door.x, LAYOUT.door.y, LAYOUT.door.w, LAYOUT.door.h,
@@ -1468,15 +1466,11 @@ const SceneMirrorWorld = {
         showAtmosphericText('An outline on the wall. A ghost of glass. It pulls at you.', 3.5);
         AudioEngine.playWhoosh();
 
-        // After a moment, get pulled back and loop
+        // Flash after 1 second to hint, then pull back after 3 seconds total
+        this.flashingBack = true;
         setTimeout(() => {
             this.returnToRoom();
         }, 3000);
-    },
-
-    handleEyeStains() {
-        showAtmosphericText('Three dark stains. Eye-shaped. They watch you. They blink when you don\'t.', 4.0);
-        AudioEngine.playMeow();
     },
 
     handleDoorMirror() {
@@ -1497,6 +1491,11 @@ const SceneMirrorWorld = {
     update(dt) {
         this.doorLightPulse += dt;
         this.mirrorOutlineGlow += dt;
+
+        if (this.flashingBack) {
+            this.flashTimer += dt;
+        }
+
         Hotspots.update(Game.mouse.worldX, Game.mouse.worldY);
 
         // Update atmospheric text timer
@@ -1601,39 +1600,32 @@ const SceneMirrorWorld = {
         // Curtain on far right (no mirror)
         ctx.drawImage(Game.assets.curtainClosed, LAYOUT.curtain.x, LAYOUT.curtain.y);
 
-        // Three eye-shaped stains where cat was
-        ctx.fillStyle = '#0a1a16';
-        const catX = LAYOUT.cat.x + LAYOUT.cat.w / 2;
-        const catY = LAYOUT.cat.y + LAYOUT.cat.h / 2;
+        ctx.restore(); // End flip
 
-        // Three eye shapes
-        [[0, -15], [-25, 10], [25, 10]].forEach(([dx, dy]) => {
-            ctx.save();
-            ctx.translate(catX + dx, catY + dy);
-            ctx.beginPath();
-            ctx.ellipse(0, 0, 8, 5, 0, 0, Math.PI * 2);
-            ctx.fill();
+        // Mirror outline on LEFT side (outside the flip, so it appears on actual left)
+        let glowIntensity = 0.1 + Math.sin(this.mirrorOutlineGlow) * 0.05;
 
-            // Blink effect
-            if (Math.sin(this.mirrorOutlineGlow * 0.7 + dx * 0.1) > 0.85) {
-                ctx.fillStyle = '#64ff80';
-                ctx.beginPath();
-                ctx.arc(0, 0, 2, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            ctx.restore();
-        });
+        // Add flash effect when pulling back (after 1 second)
+        if (this.flashingBack && this.flashTimer > 1.0) {
+            const flashPulse = Math.sin((this.flashTimer - 1.0) * 8) * 0.3 + 0.3;
+            glowIntensity += flashPulse;
+        }
 
-        // Invisible mirror outline (glowing faintly)
-        const glowIntensity = 0.1 + Math.sin(this.mirrorOutlineGlow) * 0.05;
-        ctx.strokeStyle = `rgba(100, 255, 180, ${glowIntensity})`;
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = `rgba(100, 255, 180, ${Math.min(glowIntensity, 0.8)})`;
+        ctx.lineWidth = 2 + (this.flashingBack && this.flashTimer > 1.0 ? 2 : 0);
         ctx.beginPath();
         ctx.ellipse(LAYOUT.mirror.x + LAYOUT.mirror.w/2, LAYOUT.mirror.y + LAYOUT.mirror.h/2,
                     LAYOUT.mirror.w/2 - 10, LAYOUT.mirror.h/2 - 10, 0, 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.restore(); // End flip
+        // Add glow when flashing
+        if (this.flashingBack && this.flashTimer > 1.0) {
+            ctx.fillStyle = `rgba(100, 255, 180, ${Math.sin((this.flashTimer - 1.0) * 8) * 0.1 + 0.05})`;
+            ctx.beginPath();
+            ctx.ellipse(LAYOUT.mirror.x + LAYOUT.mirror.w/2, LAYOUT.mirror.y + LAYOUT.mirror.h/2,
+                        LAYOUT.mirror.w/2 - 10, LAYOUT.mirror.h/2 - 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         // Effects
         FX.drawVignette(ctx);
@@ -1670,6 +1662,8 @@ const SceneAttic = {
     cabinetShake: 0,
     portraitRotation: 0,
     moonPulse: 0,
+    flashingBack: false,
+    flashTimer: 0,
 
     enter() {
         this.setupHotspots();
@@ -1677,6 +1671,8 @@ const SceneAttic = {
         this.cabinetShake = 0;
         this.portraitRotation = 0;
         this.moonPulse = 0;
+        this.flashingBack = false;
+        this.flashTimer = 0;
 
         // Show atmospheric text
         setTimeout(() => {
@@ -1731,7 +1727,8 @@ const SceneAttic = {
         showAtmosphericText('A portrait of someone. They have the wrong number of eyes. They blink when you look away.', 4.5);
         AudioEngine.playTick();
 
-        // After examining portrait several times, trigger return
+        // Flash after 1 second to hint, then pull back after 4 seconds total
+        this.flashingBack = true;
         setTimeout(() => {
             this.returnToRoom();
         }, 4000);
@@ -1751,6 +1748,11 @@ const SceneAttic = {
         this.cabinetShake += dt;
         this.portraitRotation += dt;
         this.moonPulse += dt;
+
+        if (this.flashingBack) {
+            this.flashTimer += dt;
+        }
+
         Hotspots.update(Game.mouse.worldX, Game.mouse.worldY);
 
         // Update atmospheric text timer
@@ -1853,6 +1855,17 @@ const SceneAttic = {
         });
 
         ctx.restore();
+
+        // Add flash effect to portrait when pulling back (after 1 second)
+        if (this.flashingBack && this.flashTimer > 1.0) {
+            ctx.strokeStyle = `rgba(212, 197, 169, ${Math.sin((this.flashTimer - 1.0) * 8) * 0.4 + 0.3})`;
+            ctx.lineWidth = 4 + Math.sin((this.flashTimer - 1.0) * 8) * 2;
+            ctx.strokeRect(100, 120, 150, 200);
+
+            // Add inner glow
+            ctx.fillStyle = `rgba(212, 197, 169, ${Math.sin((this.flashTimer - 1.0) * 8) * 0.1 + 0.05})`;
+            ctx.fillRect(100, 120, 150, 200);
+        }
 
         // Shaking cabinet
         const shakeX = 850 + Math.sin(this.cabinetShake * 8) * 3;
@@ -2010,18 +2023,25 @@ const SceneCorridor = {
     setupHotspots() {
         Hotspots.clear();
 
-        // Portraits (gain features as you interact)
-        for (let i = 0; i < 4; i++) {
-            Hotspots.add(`portrait-${i}`, 100 + i * 280, 150, 120, 180,
-                'Portrait', () => this.handlePortrait(i));
-        }
+        // Portraits (2 on left, 2 on right, door in middle)
+        // Left portraits
+        Hotspots.add('portrait-0', 50, 150, 120, 180,
+            'Portrait', () => this.handlePortrait(0));
+        Hotspots.add('portrait-1', 230, 150, 120, 180,
+            'Portrait', () => this.handlePortrait(1));
 
-        // Window at end
-        Hotspots.add('corridor-window', BASE_WIDTH - 280, 200, 200, 200,
+        // Right portraits
+        Hotspots.add('portrait-2', 930, 150, 120, 180,
+            'Portrait', () => this.handlePortrait(2));
+        Hotspots.add('portrait-3', 1110, 150, 120, 180,
+            'Portrait', () => this.handlePortrait(3));
+
+        // Window at end (higher up)
+        Hotspots.add('corridor-window', 950, 50, 150, 120,
             'Window', () => this.handleWindow());
 
-        // Door to bedroom
-        Hotspots.add('bedroom-door', BASE_WIDTH - 220, 300, 180, 350,
+        // Door to bedroom (centered)
+        Hotspots.add('bedroom-door', (BASE_WIDTH / 2) - 90, 300, 180, 350,
             'Door', () => this.handleBedroomDoor());
     },
 
@@ -2103,9 +2123,10 @@ const SceneCorridor = {
             ctx.strokeRect(BASE_WIDTH - 100, 250 + i * 120, 80, 150);
         }
 
-        // Portraits (gain features based on interactions)
+        // Portraits (2 on left, 2 on right, door in middle)
+        const portraitPositions = [50, 230, 930, 1110];
         for (let i = 0; i < 4; i++) {
-            const x = 100 + i * 280;
+            const x = portraitPositions[i];
             const y = 150;
 
             // Frame
@@ -2148,38 +2169,39 @@ const SceneCorridor = {
             }
         }
 
-        // Window at end showing Room 0
-        const winX = BASE_WIDTH - 280;
-        const winY = 200;
+        // Window (higher up, smaller)
+        const winX = 950;
+        const winY = 50;
         ctx.fillStyle = '#1a1410';
-        ctx.fillRect(winX, winY, 200, 200);
+        ctx.fillRect(winX, winY, 150, 120);
         ctx.strokeStyle = '#4a3428';
         ctx.lineWidth = 8;
-        ctx.strokeRect(winX, winY, 200, 200);
+        ctx.strokeRect(winX, winY, 150, 120);
 
         // Vague silhouette of Room 0 in window
         ctx.fillStyle = 'rgba(61, 50, 38, 0.3)';
-        ctx.fillRect(winX + 20, winY + 100, 160, 80);
+        ctx.fillRect(winX + 15, winY + 50, 120, 55);
 
-        // Door at end (to bedroom)
+        // Door (centered between portraits)
+        const doorX = (BASE_WIDTH / 2) - 90;
         ctx.fillStyle = '#8c7a5e';
-        ctx.fillRect(BASE_WIDTH - 220, 300, 180, 350);
+        ctx.fillRect(doorX, 300, 180, 350);
         ctx.strokeStyle = '#5a4a38';
         ctx.lineWidth = 4;
-        ctx.strokeRect(BASE_WIDTH - 220, 300, 180, 350);
+        ctx.strokeRect(doorX, 300, 180, 350);
 
         // Door panels
         ctx.strokeStyle = '#4a3428';
         ctx.lineWidth = 2;
-        ctx.strokeRect(BASE_WIDTH - 210, 320, 70, 140);
-        ctx.strokeRect(BASE_WIDTH - 210, 480, 70, 140);
-        ctx.strokeRect(BASE_WIDTH - 130, 320, 70, 140);
-        ctx.strokeRect(BASE_WIDTH - 130, 480, 70, 140);
+        ctx.strokeRect(doorX + 10, 320, 70, 140);
+        ctx.strokeRect(doorX + 10, 480, 70, 140);
+        ctx.strokeRect(doorX + 105, 320, 70, 140);
+        ctx.strokeRect(doorX + 105, 480, 70, 140);
 
         // Door handle
         ctx.fillStyle = '#6b533e';
         ctx.beginPath();
-        ctx.arc(BASE_WIDTH - 80, 470, 6, 0, Math.PI * 2);
+        ctx.arc(doorX + 140, 470, 6, 0, Math.PI * 2);
         ctx.fill();
 
         // Subtle vignette
@@ -2214,11 +2236,15 @@ const SceneCorridor = {
 // --- SCENE: BEDROOM ---
 const SceneBedroom = {
     clockPulse: 0,
+    flashingBack: false,
+    flashTimer: 0,
 
     enter() {
         this.setupHotspots();
         AudioEngine.startDrone();
         this.clockPulse = 0;
+        this.flashingBack = false;
+        this.flashTimer = 0;
 
         // Show atmospheric text
         setTimeout(() => {
@@ -2233,8 +2259,8 @@ const SceneBedroom = {
     setupHotspots() {
         Hotspots.clear();
 
-        // Bed
-        Hotspots.add('bed', 300, 400, 400, 250,
+        // Bed (moved higher to not cover subtitles)
+        Hotspots.add('bed', 300, 350, 400, 250,
             'Bed', () => this.handleBed());
 
         // Bedside table with lamp
@@ -2258,7 +2284,8 @@ const SceneBedroom = {
         showAtmosphericText('The bed looks soft. Inviting. If you lie down, will you wake up? Or will you sleep deeper?', 4.5);
         AudioEngine.playWhoosh();
 
-        // Lying down triggers return
+        // Flash after 1 second to hint, then pull back after 4 seconds total
+        this.flashingBack = true;
         setTimeout(() => {
             this.returnToRoom();
         }, 4000);
@@ -2291,6 +2318,11 @@ const SceneBedroom = {
 
     update(dt) {
         this.clockPulse += dt;
+
+        if (this.flashingBack) {
+            this.flashTimer += dt;
+        }
+
         Hotspots.update(Game.mouse.worldX, Game.mouse.worldY);
 
         // Update atmospheric text timer
@@ -2355,15 +2387,26 @@ const SceneBedroom = {
         ctx.fillStyle = 'rgba(61, 50, 38, 0.15)';
         ctx.fillRect(470, 100, 240, 140);
 
-        // Bed (large, inviting)
+        // Bed (large, inviting) - moved higher to not cover subtitles
         ctx.fillStyle = '#e8d8c8';
-        ctx.fillRect(300, 400, 400, 250);
+        ctx.fillRect(300, 350, 400, 250);
         ctx.fillStyle = '#d8c8b8';
-        ctx.fillRect(300, 400, 400, 80); // Pillow area
+        ctx.fillRect(300, 350, 400, 80); // Pillow area
 
         // Bed frame
         ctx.fillStyle = '#5a4a3a';
-        ctx.fillRect(290, 630, 420, 20);
+        ctx.fillRect(290, 580, 420, 20);
+
+        // Add flash effect to bed when pulling back (after 1 second)
+        if (this.flashingBack && this.flashTimer > 1.0) {
+            ctx.strokeStyle = `rgba(232, 216, 200, ${Math.sin((this.flashTimer - 1.0) * 8) * 0.4 + 0.3})`;
+            ctx.lineWidth = 4 + Math.sin((this.flashTimer - 1.0) * 8) * 2;
+            ctx.strokeRect(300, 350, 400, 250);
+
+            // Add inner glow
+            ctx.fillStyle = `rgba(232, 216, 200, ${Math.sin((this.flashTimer - 1.0) * 8) * 0.1 + 0.05})`;
+            ctx.fillRect(300, 350, 400, 250);
+        }
 
         // Bedside table
         ctx.fillStyle = '#5a4a3a';
@@ -2597,9 +2640,54 @@ const SceneEndingMirrorB = {
         document.getElementById('ending-return').onclick = () => {
             this.endingOverlay.remove();
             this.endingOverlay = null;
-            SceneEndingMirrorA.prototype.incrementLoop.call(this);
+            this.incrementLoop();
             SceneManager.changeState(STATES.ROOM);
         };
+    },
+
+    incrementLoop() {
+        Game.gameState.loopCount++;
+        const [hours, minutes] = Game.gameState.clockTime.split(':').map(Number);
+        const newMinutes = minutes + 1;
+        Game.gameState.clockTime = `${hours}:${newMinutes.toString().padStart(2, '0')}`;
+        Game.assets.clock = Assets.generateClock(Game.gameState.clockTime);
+
+        // Reset room state for new loop
+        this.resetRoomState();
+
+        this.checkFinalEnding();
+    },
+
+    resetRoomState() {
+        // Reset room interactions but keep progression
+        Game.gameState.mirrorCracked = true;
+        Game.gameState.mirrorRepaired = false;
+        Game.gameState.curtainPulled = false;
+        Game.gameState.drawerOpen = false;
+        Game.gameState.catAwake = false;
+        Game.gameState.catFed = false;
+        Game.gameState.bowlWarmed = false;
+        Game.gameState.doorLit = false;
+        Game.gameState.bloodDropped = false;
+        Game.gameState.atmosphericText = null;
+        Game.gameState.atmosphericTextTimer = 0;
+
+        // Clear inventory
+        Game.inventory.items = [];
+        Game.inventory.selectedItem = null;
+        Inventory.render();
+
+        // Regenerate assets to reset states
+        Assets.load();
+    },
+
+    checkFinalEnding() {
+        if (Game.gameState.completedEndings.size >= 3) {
+            // All endings seen - trigger final
+            setTimeout(() => {
+                SceneManager.changeState(STATES.FINAL_ENDING);
+            }, 1000);
+        }
     },
 
     exit() {
@@ -2753,9 +2841,54 @@ const SceneEndingCatB = {
         document.getElementById('ending-return').onclick = () => {
             this.endingOverlay.remove();
             this.endingOverlay = null;
-            SceneEndingMirrorA.prototype.incrementLoop.call(this);
+            this.incrementLoop();
             SceneManager.changeState(STATES.ROOM);
         };
+    },
+
+    incrementLoop() {
+        Game.gameState.loopCount++;
+        const [hours, minutes] = Game.gameState.clockTime.split(':').map(Number);
+        const newMinutes = minutes + 1;
+        Game.gameState.clockTime = `${hours}:${newMinutes.toString().padStart(2, '0')}`;
+        Game.assets.clock = Assets.generateClock(Game.gameState.clockTime);
+
+        // Reset room state for new loop
+        this.resetRoomState();
+
+        this.checkFinalEnding();
+    },
+
+    resetRoomState() {
+        // Reset room interactions but keep progression
+        Game.gameState.mirrorCracked = true;
+        Game.gameState.mirrorRepaired = false;
+        Game.gameState.curtainPulled = false;
+        Game.gameState.drawerOpen = false;
+        Game.gameState.catAwake = false;
+        Game.gameState.catFed = false;
+        Game.gameState.bowlWarmed = false;
+        Game.gameState.doorLit = false;
+        Game.gameState.bloodDropped = false;
+        Game.gameState.atmosphericText = null;
+        Game.gameState.atmosphericTextTimer = 0;
+
+        // Clear inventory
+        Game.inventory.items = [];
+        Game.inventory.selectedItem = null;
+        Inventory.render();
+
+        // Regenerate assets to reset states
+        Assets.load();
+    },
+
+    checkFinalEnding() {
+        if (Game.gameState.completedEndings.size >= 3) {
+            // All endings seen - trigger final
+            setTimeout(() => {
+                SceneManager.changeState(STATES.FINAL_ENDING);
+            }, 1000);
+        }
     },
 
     exit() {
