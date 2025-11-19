@@ -60,6 +60,49 @@ function showAtmosphericText(text, duration = 3.0) {
     Game.gameState.atmosphericTextDuration = duration;
 }
 
+// Loop increment helper - used when pulling back to Room 0 from exploration scenes
+function incrementLoopAndReturnToRoom() {
+    // Increment loop count
+    Game.gameState.loopCount++;
+
+    // Update clock time
+    const [hours, minutes] = Game.gameState.clockTime.split(':').map(Number);
+    const newMinutes = minutes + 1;
+    Game.gameState.clockTime = `${hours}:${newMinutes.toString().padStart(2, '0')}`;
+    Game.assets.clock = Assets.generateClock(Game.gameState.clockTime);
+
+    // Reset room state for new loop
+    Game.gameState.mirrorCracked = true;
+    Game.gameState.mirrorRepaired = false;
+    Game.gameState.curtainPulled = false;
+    Game.gameState.drawerOpen = false;
+    Game.gameState.catAwake = false;
+    Game.gameState.catFed = false;
+    Game.gameState.bowlWarmed = false;
+    Game.gameState.doorLit = false;
+    Game.gameState.bloodDropped = false;
+    Game.gameState.atmosphericText = null;
+    Game.gameState.atmosphericTextTimer = 0;
+
+    // Clear inventory
+    Game.inventory.items = [];
+    Game.inventory.selectedItem = null;
+    Inventory.render();
+
+    // Regenerate assets to reset states
+    Assets.load();
+
+    // Check for final ending
+    if (Game.gameState.completedEndings.size >= 3) {
+        setTimeout(() => {
+            SceneManager.changeState(STATES.FINAL_ENDING);
+        }, 1000);
+    } else {
+        // Return to Room 0
+        SceneManager.changeState(STATES.ROOM);
+    }
+}
+
 // --- GLOBAL GAME OBJECT ---
 const Game = {
     canvas: null,
@@ -1553,8 +1596,7 @@ const SceneMirrorWorld = {
     },
 
     returnToRoom() {
-        SceneEndingMirrorA.prototype.incrementLoop.call(this);
-        SceneManager.changeState(STATES.ROOM);
+        incrementLoopAndReturnToRoom();
     },
 
     update(dt) {
@@ -1821,8 +1863,7 @@ const SceneAttic = {
     },
 
     returnToRoom() {
-        SceneEndingMirrorA.prototype.incrementLoop.call(this);
-        SceneManager.changeState(STATES.ROOM);
+        incrementLoopAndReturnToRoom();
     },
 
     update(dt) {
@@ -2106,15 +2147,15 @@ const SceneCorridor = {
 
         // Portraits (2 on left, 2 on right)
         // Left portraits
-        Hotspots.add('portrait-0', 80, 140, 120, 160,
+        Hotspots.add('portrait-0', 80, 190, 120, 160,
             'Portrait', () => this.handlePortrait(0));
-        Hotspots.add('portrait-1', 260, 140, 120, 160,
+        Hotspots.add('portrait-1', 260, 190, 120, 160,
             'Portrait', () => this.handlePortrait(1));
 
         // Right portraits
-        Hotspots.add('portrait-2', 900, 140, 120, 160,
+        Hotspots.add('portrait-2', 900, 190, 120, 160,
             'Portrait', () => this.handlePortrait(2));
-        Hotspots.add('portrait-3', 1080, 140, 120, 160,
+        Hotspots.add('portrait-3', 1080, 190, 120, 160,
             'Portrait', () => this.handlePortrait(3));
 
         // Window (on top)
@@ -2208,7 +2249,7 @@ const SceneCorridor = {
         const portraitPositions = [80, 260, 900, 1080];
         for (let i = 0; i < 4; i++) {
             const x = portraitPositions[i];
-            const y = 140;
+            const y = 190;
 
             // Frame
             ctx.fillStyle = '#2a1810';
@@ -2405,8 +2446,7 @@ const SceneBedroom = {
     },
 
     returnToRoom() {
-        SceneEndingMirrorA.prototype.incrementLoop.call(this);
-        SceneManager.changeState(STATES.ROOM);
+        incrementLoopAndReturnToRoom();
     },
 
     update(dt) {
