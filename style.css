@@ -414,3 +414,94 @@ body {
     z-index: 12;
     pointer-events: none;
 }
+
+/* Note Modal Overlay */
+.note-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(10, 8, 6, 0.85);
+    z-index: 100;
+    animation: overlayFadeIn 0.4s ease;
+}
+
+.note-paper {
+    position: relative;
+    background: #f4f1e8;
+    width: 400px;
+    padding: 40px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8);
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    animation: noteAppear 0.5s ease;
+}
+
+@keyframes noteAppear {
+    0% {
+        transform: scale(0.8) translateY(20px);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+.note-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+}
+
+.note-line {
+    position: absolute;
+    left: 40px;
+    right: 40px;
+    height: 1px;
+    background: rgba(150, 140, 130, 0.3);
+}
+
+.note-line:nth-child(1) { top: 80px; }
+.note-line:nth-child(2) { top: 120px; }
+.note-line:nth-child(3) { top: 160px; }
+.note-line:nth-child(4) { top: 220px; }
+.note-line:nth-child(5) { top: 260px; }
+
+.note-text {
+    position: relative;
+    z-index: 1;
+    color: #2a2218;
+    font-size: 18px;
+    line-height: 2;
+    text-align: left;
+    min-height: 200px;
+}
+
+.note-close-btn {
+    position: relative;
+    z-index: 1;
+    margin-top: 20px;
+    padding: 10px 30px;
+    background: #5a4a38;
+    color: #d4c5a9;
+    border: 2px solid #4a3428;
+    border-radius: 4px;
+    font-family: 'Georgia', serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.note-close-btn:hover {
+    background: #6a5a48;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
